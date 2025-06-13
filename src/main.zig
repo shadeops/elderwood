@@ -16,8 +16,8 @@ const ExampleGlobalState = struct {
 };
 
 const tile_size = 32;
-const screen_tiles_x = @divFloor(pdapi.LCD_COLUMNS, tile_size) + 1;
-const screen_tiles_y = @divFloor(pdapi.LCD_ROWS, tile_size) + 1;
+const screen_tiles_x = @divFloor(pdapi.LCD_COLUMNS, tile_size) + 2;
+const screen_tiles_y = @divFloor(pdapi.LCD_ROWS, tile_size) + 2;
 const screen_tiles = screen_tiles_x * screen_tiles_y;
 const grid_tiles_x = 10;
 const grid_tiles_y = 10;
@@ -90,7 +90,6 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     if (global_state.posx > 0) {
         global_state.tile_offsetx -= 1;
         global_state.posx = global_state.posx - tile_size;
-        //global_state.posx = @rem(global_state.posx, tile_size);
     } else if (global_state.posx <= -tile_size) {
         global_state.tile_offsetx += 1;
         global_state.posx = @rem(global_state.posx, tile_size);
@@ -127,7 +126,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
         @floatFromInt(global_state.posy),
     );
 
-    if (false) {
+    if (true) {
         var buffer: [*c]u8 = null;
         const str_len = playdate.system.formatString(
             &buffer,
