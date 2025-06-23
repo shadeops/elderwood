@@ -1,13 +1,11 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const pdapi = @import("playdate_api_definitions.zig");
 const panic_handler = @import("panic_handler.zig");
 
-
 const level = @embedFile("library.json");
 
-
 pub const panic = panic_handler.panic;
-
 
 const GlobalState = struct {
     playdate: *pdapi.PlaydateAPI,
@@ -23,49 +21,45 @@ const Position = struct {
     y: i8,
 };
 
+const debug = builtin.mode == .Debug;
 
 const BitmapLibrary = struct {
     const max_bitmaps = 128;
 
     bitmaps: []*pdapi.LCDBitmap,
     playdate: *const pdapi.PlaydateAPI,
-    tmp_res: [2]c_int = [2]c_int{0,0},
-    tmp_is_res: bool = false, 
+    tmp_res: [2]c_int = [2]c_int{ 0, 0 },
+    tmp_is_res: bool = false,
 
     fn init(playdate: *const pdapi.PlaydateAPI) BitmapLibrary {
-        const bitmaps_ptr: [*]*pdapi.LCDBitmap = @ptrCast(@alignCast(
-            playdate.system.realloc(null, @sizeOf(*pdapi.LCDBitmap)*max_bitmaps) orelse unreachable 
-        ));
+        const bitmaps_ptr: [*]*pdapi.LCDBitmap = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(*pdapi.LCDBitmap) * max_bitmaps,) orelse unreachable));
         var bitlib = BitmapLibrary{
             .bitmaps = bitmaps_ptr[0..max_bitmaps],
             .playdate = playdate,
         };
-        bitlib.playdate.system.logToConsole("len of bitlibs %d", bitlib.bitmaps.len);
+        if (debug) bitlib.playdate.system.logToConsole("len of bitlibs %d", bitlib.bitmaps.len);
         bitlib.bitmaps.len = 0;
         return bitlib;
     }
 
-    fn addMap(self: *BitmapLibrary, bitmap: *pdapi.LCDBitmap) bool {
-        self.playdate.system.logToConsole("len of next bitlibs %d", self.bitmaps.len);
-        if (self.bitmaps.len + 1 >= max_bitmaps) return false;
+    fn addMap(self: *BitmapLibrary, bitmap: *pdapi.LCDBitmap) error{LibraryFull}!void {
+        if (self.bitmaps.len + 1 >= max_bitmaps) return error.LibraryFull;
         self.bitmaps.len += 1;
-        self.bitmaps[self.bitmaps.len-1] = bitmap;
-        return true;
-        // todo return error
+        self.bitmaps[self.bitmaps.len - 1] = bitmap;
     }
-    
+
     fn decodeError(decoder: ?*pdapi.JSONDecoder, jerror: ?[*:0]const u8, linenum: c_int) callconv(.C) void {
         const bitlib: *const BitmapLibrary = @ptrCast(@alignCast((decoder orelse return).userdata));
         bitlib.playdate.system.logToConsole("decodeError: %s %d", jerror, linenum);
     }
     fn willDecodeSublist(decoder: ?*pdapi.JSONDecoder, name: ?[*:0]const u8, jtype: pdapi.JSONValueType) callconv(.C) void {
         const bitlib: *BitmapLibrary = @ptrCast(@alignCast((decoder orelse return).userdata));
-        if (jtype == .JSONArray and std.mem.eql(u8, "res", std.mem.sliceTo(name.?,0))) {
+        if (jtype == .JSONArray and std.mem.eql(u8, "res", std.mem.sliceTo(name.?, 0))) {
             bitlib.tmp_is_res = true;
         } else {
             bitlib.tmp_is_res = false;
         }
-        bitlib.playdate.system.logToConsole("[%s] willDecodeSublist: %s", decoder.?.path, name);
+        if (debug) bitlib.playdate.system.logToConsole("[%s] willDecodeSublist: %s", decoder.?.path, name);
     }
     //fn shouldDecodeTableValueForKey(decoder: ?*pdapi.JSONDecoder, key: ?[*:0]const u8) callconv(.C) c_int {
     //    const bitlib: *const BitmapLibrary = @ptrCast(@alignCast((decoder orelse return 0).userdata));
@@ -75,16 +69,23 @@ const BitmapLibrary = struct {
     fn didDecodeTableValue(decoder: ?*pdapi.JSONDecoder, key: ?[*:0]const u8, value: pdapi.JSONValue) callconv(.C) void {
         const bitlib: *BitmapLibrary = @ptrCast(@alignCast((decoder orelse return).userdata));
 
-        var row_bytes: c_int = undefined;
+        if (value.type != @intFromEnum(pdapi.JSONValueType.JSONString)) {
+            return;
+        }
+        const key_name = std.mem.sliceTo(key orelse return, 0);
+        const img_str = std.mem.sliceTo(value.data.stringval, 0);
+
+        var row_bytes: c_int = 0;
         var image_width: c_int = 0;
         var image_height: c_int = 0;
-        var mask: [*c]u8 = undefined;
-        var data: [*c]u8 = undefined;
-        if (std.mem.eql(u8, "img", std.mem.sliceTo(key.?,0))) {
-            const bitmap = bitlib.playdate.graphics.newBitmap(bitlib.tmp_res[0], bitlib.tmp_res[1], @intFromEnum(pdapi.LCDSolidColor.ColorClear)) orelse return;
-            errdefer {
-                bitlib.playdate.realloc(bitmap, 0);
-            }
+        var mask: [*c]u8 = null;
+        var data: [*c]u8 = null;
+        if (std.mem.eql(u8, "img", key_name)) {
+            const bitmap = bitlib.playdate.graphics.newBitmap(
+                bitlib.tmp_res[0],
+                bitlib.tmp_res[1],
+                @intFromEnum(pdapi.LCDSolidColor.ColorClear),
+            ) orelse return;
             bitlib.playdate.graphics.getBitmapData(
                 bitmap,
                 &image_width,
@@ -93,46 +94,48 @@ const BitmapLibrary = struct {
                 &mask,
                 &data,
             );
-            // assert tmp_res == width / height
-            // assert row_bytes * rows == size of our decoded string
-            bitlib.playdate.system.logToConsole("SIZE: %d", row_bytes*image_height);
-            bitlib.playdate.system.logToConsole("SIZE2: %d",
-                std.base64.url_safe.Decoder.calcSizeForSlice(std.mem.sliceTo(value.data.stringval, 0)) catch {
-                    bitlib.playdate.system.logToConsole("failed to calc");
-                    return;
-                },
-            );
-            std.base64.url_safe.Decoder.decode(data[0..@intCast(row_bytes*image_height)], std.mem.sliceTo(value.data.stringval, 0)) catch {
-                bitlib.playdate.system.logToConsole("failed to calc");
+            std.debug.assert(bitlib.tmp_res[0] * bitlib.tmp_res[1] == image_width * image_height);
+            const decode_size = std.base64.url_safe.Decoder.calcSizeForSlice(img_str) catch {
+                _ = bitlib.playdate.system.realloc(bitmap, 0);
+                bitlib.playdate.system.logToConsole("Failed to calc size of %s", key);
                 return;
             };
-            bitlib.playdate.system.logToConsole("about to add bitmap");
-            _ = bitlib.addMap(bitmap); 
-            bitlib.playdate.system.logToConsole("added bitmap");
-         } else if (std.mem.eql(u8, "img_mask", std.mem.sliceTo(key.?,0))) {
+            if (decode_size == row_bytes * image_height) {
+                std.base64.url_safe.Decoder.decode(data[0..@intCast(row_bytes * image_height)], img_str) catch {
+                    _ = bitlib.playdate.system.realloc(bitmap, 0);
+                    bitlib.playdate.system.logToConsole("Failed to decode %s", key);
+                    return;
+                };
+                bitlib.addMap(bitmap) catch {
+                    _ = bitlib.playdate.system.realloc(bitmap, 0);
+                    bitlib.playdate.system.logToConsole("Bitmap Library Full");
+                };
+            }
+        } else if (std.mem.eql(u8, "img_mask", key_name)) {
             bitlib.playdate.graphics.getBitmapData(
-                bitlib.bitmaps[bitlib.bitmaps.len-1],
+                bitlib.bitmaps[bitlib.bitmaps.len - 1],
                 &image_width,
                 &image_height,
                 &row_bytes,
                 &mask,
                 &data,
             );
-            // assert tmp_res == width / height
-            // assert row_bytes * rows == size of our decoded string
-            bitlib.playdate.system.logToConsole("SIZE: %d", row_bytes*image_height);
-            bitlib.playdate.system.logToConsole("SIZE2: %d",
-                std.base64.url_safe.Decoder.calcSizeForSlice(std.mem.sliceTo(value.data.stringval, 0)) catch {
-                    bitlib.playdate.system.logToConsole("failed to calc");
-                    return;
-                },
-            );
-            std.base64.url_safe.Decoder.decode(mask[0..@intCast(row_bytes*image_height)], std.mem.sliceTo(value.data.stringval, 0)) catch {
-                bitlib.playdate.system.logToConsole("failed to calc");
+            if (mask == null) {
+                bitlib.playdate.system.logToConsole("No mask set");
+                return;
+            }
+            const decode_size = std.base64.url_safe.Decoder.calcSizeForSlice(img_str) catch {
+                bitlib.playdate.system.logToConsole("Failed to calc size of %s", key);
                 return;
             };
+            if (decode_size == row_bytes * image_height) {
+                std.base64.url_safe.Decoder.decode(mask[0..@intCast(row_bytes * image_height)], img_str) catch {
+                    bitlib.playdate.system.logToConsole("Failed to decode %s", key);
+                    return;
+                };
+            }
         }
-        bitlib.playdate.system.logToConsole("[%s] didDecodeTableValue: %s", decoder.?.path, key);
+        if (debug) bitlib.playdate.system.logToConsole("[%s] didDecodeTableValue: %s", decoder.?.path, key);
     }
     //fn shouldDecodeArrayValueAtIndex(decoder: ?*pdapi.JSONDecoder, pos: c_int) callconv(.C) c_int {
     //    const bitlib: *const BitmapLibrary = @ptrCast(@alignCast((decoder orelse return 0).userdata));
@@ -142,25 +145,25 @@ const BitmapLibrary = struct {
     fn didDecodeArrayValue(decoder: ?*pdapi.JSONDecoder, pos: c_int, value: pdapi.JSONValue) callconv(.C) void {
         const bitlib: *BitmapLibrary = @ptrCast(@alignCast((decoder orelse return).userdata));
         if (bitlib.tmp_is_res and pos > 0 and pos < 3 and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
-            bitlib.tmp_res[@intCast(pos-1)] = value.data.intval;
+            bitlib.tmp_res[@intCast(pos - 1)] = value.data.intval;
         }
-        bitlib.playdate.system.logToConsole("didDecodeArrayValue: %d", pos);
+        if (debug) bitlib.playdate.system.logToConsole("didDecodeArrayValue: %d", pos);
     }
     fn didDecodeSublist(decoder: ?*pdapi.JSONDecoder, name: ?[*:0]const u8, jtype: pdapi.JSONValueType) callconv(.C) ?*anyopaque {
         _ = jtype;
         const bitlib: *BitmapLibrary = @ptrCast(@alignCast((decoder orelse return null).userdata));
         bitlib.tmp_is_res = false;
-        bitlib.playdate.system.logToConsole("didDecodeSublist: %s", name);
+        if (debug) bitlib.playdate.system.logToConsole("didDecodeSublist: %s", name);
         return null;
     }
 
     fn buildLibrary(self: *BitmapLibrary) void {
         var json_decoder = pdapi.JSONDecoder{
-            .decodeError = decodeError, 
-            .willDecodeSublist = willDecodeSublist, 
-            .shouldDecodeTableValueForKey = null,//shouldDecodeTableValueForKey,
+            .decodeError = decodeError,
+            .willDecodeSublist = willDecodeSublist,
+            .shouldDecodeTableValueForKey = null, //shouldDecodeTableValueForKey,
             .didDecodeTableValue = didDecodeTableValue,
-            .shouldDecodeArrayValueAtIndex = null,//shouldDecodeArrayValueAtIndex,
+            .shouldDecodeArrayValueAtIndex = null, //shouldDecodeArrayValueAtIndex,
             .didDecodeArrayValue = didDecodeArrayValue,
             .didDecodeSublist = didDecodeSublist,
             .userdata = self,
@@ -168,10 +171,9 @@ const BitmapLibrary = struct {
             .path = null,
         };
         _ = self.playdate.json.decodeString(&json_decoder, level, null);
-        self.playdate.system.logToConsole("[%d] [%d]", self.tmp_res[0], self.tmp_res[1]);
+        if (debug) self.playdate.system.logToConsole("[%d] [%d]", self.tmp_res[0], self.tmp_res[1]);
     }
 };
-
 
 const TiledBG = struct {
     const tile_size = 32;
@@ -246,13 +248,8 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
                 &mask,
                 null,
             );
-            playdate.system.logToConsole("Json Size: %d\n", level.len);
-            //if (mask == null) {
-            //    playdate.system.logToConsole("null mask\n");
-            //} else {
-            //    playdate.system.logToConsole("has mask\n");
-            //}
-
+            if (debug) playdate.system.logToConsole("Json Size: %d\n", level.len);
+            
             var bitmap_lib = BitmapLibrary.init(playdate);
             bitmap_lib.buildLibrary();
 
@@ -304,7 +301,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     playdate.graphics.setDrawMode(draw_mode);
     playdate.graphics.clear(@intCast(@intFromEnum(clear_color)));
 
-    var delta = Position{.x = 0, .y = 0};
+    var delta = Position{ .x = 0, .y = 0 };
     if (pdapi.BUTTON_LEFT & current_buttons != 0) delta.x = 2;
     if (pdapi.BUTTON_RIGHT & current_buttons != 0) delta.x = -2;
     if (pdapi.BUTTON_UP & current_buttons != 0) delta.y = 2;
