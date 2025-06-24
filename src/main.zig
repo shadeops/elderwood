@@ -13,11 +13,13 @@ const GlobalState = struct {
     font: *pdapi.LCDFont,
     pos: Position,
     bitlib: BitmapLib,
+    frame: u8,
+    flipped: bool,
 };
 
 const Position = struct {
-    x: i8,
-    y: i8,
+    x: i16,
+    y: i16,
 };
 
 const BitmapLib = struct {
@@ -232,6 +234,8 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             global_state.* = .{
                 .playdate = playdate,
                 .pos = .{ .x = 0, .y = 0 },
+                .frame = 0,
+                .flipped = false,
                 .font = font,
                 .bitlib = bitmap_lib,
             };
@@ -259,17 +263,31 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     playdate.graphics.clear(@intCast(@intFromEnum(clear_color)));
 
     var delta = Position{ .x = 0, .y = 0 };
-    if (pdapi.BUTTON_LEFT & current_buttons != 0) delta.x = 2;
-    if (pdapi.BUTTON_RIGHT & current_buttons != 0) delta.x = -2;
-    if (pdapi.BUTTON_UP & current_buttons != 0) delta.y = 2;
-    if (pdapi.BUTTON_DOWN & current_buttons != 0) delta.y = -2;
+    if (pdapi.BUTTON_LEFT & current_buttons != 0) delta.x = -2;
+    if (pdapi.BUTTON_RIGHT & current_buttons != 0) delta.x = 2;
+    if (pdapi.BUTTON_UP & current_buttons != 0) delta.y = -2;
+    if (pdapi.BUTTON_DOWN & current_buttons != 0) delta.y = 2;
 
+    global_state.pos.x += delta.x;
+    global_state.pos.y += delta.y;
+   
+    if (delta.x < 0) global_state.flipped = true;
+    if (delta.x > 0) global_state.flipped = false;
+    
     playdate.graphics.drawBitmap(
         global_state.bitlib.bitmaps[0],
-        @as(c_int, global_state.pos.x) + 128,
-        @as(c_int, global_state.pos.y) + 128,
+        128,
+        64,
         .BitmapFlippedY,
     );
+     
+    playdate.graphics.drawBitmap(
+        global_state.bitlib.bitmaps[global_state.frame+1],
+        @as(c_int, global_state.pos.x),
+        @as(c_int, global_state.pos.y),
+        if (global_state.flipped) .BitmapFlippedXY else .BitmapFlippedY,
+    );
+    if (delta.x != 0 or delta.y != 0) global_state.frame = (global_state.frame+1) % 18;
 
     //returning 1 signals to the OS to draw the frame.
     //we always want this frame drawn
