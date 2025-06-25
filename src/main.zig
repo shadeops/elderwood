@@ -3,16 +3,16 @@ const builtin = @import("builtin");
 const pdapi = @import("playdate_api_definitions.zig");
 const panic_handler = @import("panic_handler.zig");
 
-const level = @embedFile("library.json");
+const library = @embedFile("library.json");
 const debug = builtin.mode == .Debug;
 
 pub const panic = panic_handler.panic;
 
 const GlobalState = struct {
     playdate: *pdapi.PlaydateAPI,
-    font: *pdapi.LCDFont,
     pos: Position,
     bitlib: BitmapLib,
+    level: Level,
     frame: u8,
     flipped: bool,
 };
@@ -20,6 +20,38 @@ const GlobalState = struct {
 const Position = struct {
     x: i16,
     y: i16,
+};
+
+const Level = struct {
+    const max_sprites = 128;
+
+    sprites: []*pdapi.LCDSprite,
+
+    fn init(playdate: *const pdapi.PlaydateAPI) Level {
+        const sprites_ptr: [*]*pdapi.LCDSprite = @ptrCast(@alignCast(playdate.system.realloc(
+            null,
+            @sizeOf(*pdapi.LCDSprite) * max_sprites,
+        ) orelse unreachable));
+        var level = Level{
+            .sprites = sprites_ptr[0..max_sprites],
+        };
+        if (debug) playdate.system.logToConsole("len of sprites %d", level.sprites.len);
+        level.sprites.len = 0;
+        return level;
+    }
+
+    fn deinit(self: *Level, playdate: *const pdapi.PlaydateAPI) void {
+        for (self.sprites) |sprite| {
+            playdate.graphics.freeSprite(sprite);
+        }
+        self.sprites.len = 0;
+    }
+
+    fn addSprite(self: *Level, sprite: *pdapi.LCDSprite) error{LevelFull}!void {
+        if (self.sprites.len + 1 >= max_sprites) return error.LevelFull;
+        self.sprites.len += 1;
+        self.sprites[self.sprites.len - 1] = sprite;
+    }
 };
 
 const BitmapLib = struct {
@@ -37,7 +69,7 @@ const BitmapLib = struct {
             .bitmaps = bitmaps_ptr[0..max_bitmaps],
             .playdate = playdate,
         };
-        if (debug) bitlib.playdate.system.logToConsole("len of bitlibs %d", bitlib.bitmaps.len);
+        if (debug) playdate.system.logToConsole("len of bitlibs %d", bitlib.bitmaps.len);
         bitlib.bitmaps.len = 0;
         return bitlib;
     }
@@ -141,7 +173,6 @@ const BitmapLibParser = struct {
                 &mask,
                 &data,
             );
-            pd.system.logToConsole("hello");
             // Instead of checking the value.type for a JSONNull, we rely on the fact that
             // the spec specified a mask or not for when the LCDBitmap was created.
             if (mask == null) {
@@ -204,7 +235,7 @@ const BitmapLibParser = struct {
             .returnString = 0,
             .path = null,
         };
-        _ = self.bitlib.playdate.json.decodeString(&json_decoder, level, null);
+        _ = self.bitlib.playdate.json.decodeString(&json_decoder, library, null);
         if (debug) self.bitlib.playdate.system.logToConsole("[%d] [%d]", self.resx, self.resy, self.has_mask);
     }
 };
@@ -218,14 +249,24 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             //      just crash with no message.
             panic_handler.init(playdate);
 
-            if (debug) playdate.system.logToConsole("Json Size: %d\n", level.len);
+            if (debug) playdate.system.logToConsole("Json Size: %d\n", library.len);
 
             var bitmap_lib = BitmapLib.init(playdate);
             var json_builder = BitmapLibParser{ .bitlib = &bitmap_lib };
             json_builder.buildLibrary();
 
-            const font = playdate.graphics.loadFont("/System/Fonts/Roobert-11-Medium.pft", null).?;
-            playdate.graphics.setFont(font);
+            var level = Level.init(playdate);
+            const sprite = playdate.sprite.newSprite() orelse unreachable;
+            playdate.sprite.setImage(sprite, bitmap_lib.bitmaps[0], .BitmapUnflipped);
+            // This is required since the flipped arg of setImage doesn't seem to work.
+            playdate.sprite.setImageFlip(sprite, .BitmapFlippedY);
+            playdate.sprite.setCenter(sprite, 0.0, 0.0);
+            playdate.sprite.moveTo(sprite, 128.0, 64.0);
+            playdate.sprite.setSize(sprite, 128.0, 128.0);
+            playdate.sprite.addSprite(sprite);
+            level.addSprite(sprite) catch {
+                playdate.system.logToConsole("Level Full");
+            };
 
             const global_state: *GlobalState =
                 @ptrCast(@alignCast(
@@ -236,8 +277,8 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
                 .pos = .{ .x = 0, .y = 0 },
                 .frame = 0,
                 .flipped = false,
-                .font = font,
                 .bitlib = bitmap_lib,
+                .level = level,
             };
 
             playdate.system.setUpdateCallback(update_and_render, global_state);
@@ -252,15 +293,12 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     const playdate = global_state.playdate;
 
     const draw_mode: pdapi.LCDBitmapDrawMode = .DrawModeCopy;
-    const clear_color: pdapi.LCDSolidColor = .ColorWhite;
+    playdate.graphics.setDrawMode(draw_mode);
 
     var current_buttons: pdapi.PDButtons = undefined;
     var pushed_buttons: pdapi.PDButtons = undefined;
     var released_buttons: pdapi.PDButtons = undefined;
     playdate.system.getButtonState(&current_buttons, &pushed_buttons, &released_buttons);
-
-    playdate.graphics.setDrawMode(draw_mode);
-    playdate.graphics.clear(@intCast(@intFromEnum(clear_color)));
 
     var delta = Position{ .x = 0, .y = 0 };
     if (pdapi.BUTTON_LEFT & current_buttons != 0) delta.x = -2;
@@ -270,26 +308,19 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
 
     global_state.pos.x += delta.x;
     global_state.pos.y += delta.y;
-   
+
     if (delta.x < 0) global_state.flipped = true;
     if (delta.x > 0) global_state.flipped = false;
-    
+
+    playdate.sprite.drawSprites();
+
     playdate.graphics.drawBitmap(
-        global_state.bitlib.bitmaps[0],
-        128,
-        64,
-        .BitmapFlippedY,
-    );
-     
-    playdate.graphics.drawBitmap(
-        global_state.bitlib.bitmaps[global_state.frame+1],
+        global_state.bitlib.bitmaps[global_state.frame + 1],
         @as(c_int, global_state.pos.x),
         @as(c_int, global_state.pos.y),
         if (global_state.flipped) .BitmapFlippedXY else .BitmapFlippedY,
     );
-    if (delta.x != 0 or delta.y != 0) global_state.frame = (global_state.frame+1) % 18;
+    if (delta.x != 0 or delta.y != 0) global_state.frame = (global_state.frame + 1) % 18;
 
-    //returning 1 signals to the OS to draw the frame.
-    //we always want this frame drawn
     return 1;
 }
