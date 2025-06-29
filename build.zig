@@ -59,12 +59,12 @@ pub fn build(b: *std.Build) !void {
     elf.link_emit_relocs = true;
     elf.entry = .{ .symbol_name = "eventHandler" };
 
-    elf.setLinkerScript(b.path("link_map.ld"));
+    elf.setLinkerScript(b.path("build/link_map.ld"));
     if (optimize == .ReleaseFast) {
         elf.root_module.omit_frame_pointer = true;
     }
     _ = writer.addCopyFile(elf.getEmittedBin(), "pdex.elf");
-    _ = writer.addCopyFile(b.path("pdxinfo"), "pdxinfo");
+    _ = writer.addCopyFile(b.path("build/pdxinfo"), "pdxinfo");
 
     try addCopyDirectory(writer, "assets", "./assets");
 
