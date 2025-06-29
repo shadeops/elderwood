@@ -1,5 +1,5 @@
-name=Hello Zig
-author=Daniel Bokser
-description=A small demo of the Zig API
-bundleID=com.panic.hellozigapi
+name=Elderwood
+author=Wolfwood
+description=Cappy's Quest V - Into the Elderwood
+bundleID=com.shadeops.elderwood
 imagePath=assets/images

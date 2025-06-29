@@ -1,7 +1,8 @@
 zig-out
 zig-cache
 .zig-cache
-.vscode
 *.swp
 .DS_Store
 .sentry-native
+backup
+__pycache__
