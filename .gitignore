@@ -6,3 +6,4 @@ zig-cache
 .sentry-native
 backup
 __pycache__
+hips
