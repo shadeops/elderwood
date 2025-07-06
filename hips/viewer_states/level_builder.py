@@ -14,6 +14,7 @@ class Border:
     grid = "grid"
     outline = "outline"
 
+
 class Element:
     def __init__(self, *args, **kwargs):
         if len(args) == 1 and isinstance(arg[0], Element):
@@ -24,10 +25,11 @@ class Element:
             self.flip = args[0].flip
         else:
             self.bitmap_id = kwargs.get("bitmap_id", 0)
-            self.pos = kwargs.get("pos", (0,0))
+            self.pos = kwargs.get("pos", (0, 0))
             self.depth = kwargs.get("depth", -1)
             self.frame_offset = kwargs.get("frame_offset", 0)
             self.flip = kwargs.get("flip", False)
+
 
 class LBState(object):
 
@@ -40,10 +42,10 @@ class LBState(object):
     PARM_ELEMENTS = "elements"
 
     PARM_BITMAPID = "bitmap_id"
-    PARM_DEPTH= "depth"
+    PARM_DEPTH = "depth"
     PARM_POSITION = "position"
     PARM_OFFSET = "frame_offset"
-
+    PARM_FLIP = "flip"
 
     def __init__(self, state_name, scene_viewer):
         self.state_name = state_name
@@ -55,6 +57,7 @@ class LBState(object):
         self.elements_parm = None
         self.current_parm_idx = 0
         self.current_id = 0
+        self.current_flip = 0
         self.library_size = 0
         self.bg_res = [0, 0]
         self.bitmap_names = []
@@ -75,12 +78,11 @@ class LBState(object):
             self.scene_viewer, hou.Geometry(), "bitmap_border"
         )
 
-    # TODO add flip X
-
-    def set_border_geo(self, pos, bitmap_id = None):
+    def set_border_geo(self, pos, bitmap_id=None, flip=None):
         bitmap_id = self.current_id if bitmap_id is None else bitmap_id
         if bitmap_id < 0 or self.border_mode == Border.none:
             return
+        flip = self.current_flip if flip is None else flip
         base_geo = (
             self.border_geo
             if self.border_mode == Border.grid
@@ -89,7 +91,7 @@ class LBState(object):
         geo = hou.Geometry()
         geo.merge(base_geo)
         scale = hou.hmath.buildScale(
-            self.bitmap_res[bitmap_id][0] / self.bg_res[0],
+            (-1 if flip else 1) * self.bitmap_res[bitmap_id][0] / self.bg_res[0],
             self.bitmap_res[bitmap_id][1] / self.bg_res[1],
             1,
         )
@@ -112,18 +114,21 @@ class LBState(object):
         for element in elements:
             x, y = element["position#"]
             bitmap_id = element["bitmap_id#"]
+            flip = element["flip#"]
             if bitmap_id < 0:
                 continue
             resx, resy = self.bitmap_res[bitmap_id]
             vx = int(pixel_coord[0] - x)
+            if flip:
+                vx = resx - vx
             vy = int(pixel_coord[1] - y)
             vy = resy - vy
             if vx >= 0 and vx < resx and vy >= 0 and vy < resy:
                 if sample_mask:
                     if mask_prims[bitmap_id].voxel((vx, vy, 0)):
-                        return element["index"], bitmap_id, (x,y)
+                        return element["index"], bitmap_id, (x, y), flip
                 else:
-                    return element["index"], bitmap_id, (x,y)
+                    return element["index"], bitmap_id, (x, y), flip
 
         return None
 
@@ -131,18 +136,12 @@ class LBState(object):
         node = self.node
         idx = self.current_parm_idx if index is None else index
         return Element(
-            bitmap_id = node.parm(f"bitmap_id{idx}").evalAsInt(),
-            depth = node.parm(f"depth{idx}").evalAsInt(),
-            pos = node.parmTuple(f"position{idx}").eval(),
-            offset = node.parmTuple(f"frame_offset{idx}").eval(),
+            bitmap_id=node.parm(f"bitmap_id{idx}").evalAsInt(),
+            depth=node.parm(f"depth{idx}").evalAsInt(),
+            pos=node.parmTuple(f"position{idx}").eval(),
+            offset=node.parmTuple(f"frame_offset{idx}").eval(),
+            flip=node.parm(f"flip{idx}").eval(),
         )
-
-    def get_indexed_parm(self, name, idx=None):
-        idx = self.current_parm_idx if idx is None else idx
-        parm = self.node.parm(f"{name}{idx}")
-        if parm is None:
-            raise ValueError(f"'elements' multiparm does not have idx ({idx})")
-        return parm
 
     def add_bitmap(self):
         node = self.node
@@ -169,6 +168,7 @@ class LBState(object):
             self.elements_parm.set(self.current_parm_idx)
             node.parm(f"bitmap_id{self.current_parm_idx}").set(element.bitmap_id)
             node.parm(f"depth{self.current_parm_idx}").set(element.depth)
+            node.parm(f"flip{self.current_parm_idx}").set(element.flip)
             node.parmTuple(f"position{self.current_parm_idx}").set(element.pos)
 
         return element
@@ -219,6 +219,7 @@ class LBState(object):
         self.current_parm_idx = self.elements_parm.evalAsInt()
         element = self.add_bitmap()
         self.current_id = element.bitmap_id
+        self.current_flip = element.flip
 
         hud_template = {
             "title": "Level Builder",
@@ -280,6 +281,7 @@ class LBState(object):
                 {"type": "plain", "label": "Modify Depth", "key": "Shift mousewheel"},
                 {"type": "plain", "label": "Select Bitmap", "key": "Ctrl LMB"},
                 {"type": "plain", "label": "Delete Bitmap", "key": "Ctrl MMB"},
+                {"type": "plain", "label": "Flip Bitmap", "key": "F"},
             ],
         }
         self.scene_viewer.hudInfo(
@@ -300,6 +302,18 @@ class LBState(object):
         # annoyingly this method counts from 0
         if self.current_parm_idx is not None:
             self.elements_parm.removeMultiParmInstance(self.current_parm_idx - 1)
+
+    def onKeyEvent(self, kwargs):
+        device = kwargs["ui_event"].device()
+        if device.keyString() in ("f", "Ctrl+f"):
+            if self.current_parm_idx is None:
+                return True
+            flip_parm = self.node.parm(f"flip{self.current_parm_idx}")
+            flip_parm.set(not flip_parm.eval())
+            self.current_flip = flip_parm.eval()
+            self.set_border_geo(self.hit_P)
+            return True
+        return False
 
     def onMouseWheelEvent(self, kwargs):
         device = kwargs["ui_event"].device()
@@ -361,7 +375,9 @@ class LBState(object):
         hit_P = hou.Vector3()
         hit_N = hou.Vector3()
         hit_uvw = hou.Vector3()
-        hit_prim = self.collision_geo.intersect(origin, direction, hit_P, hit_N, hit_uvw)
+        hit_prim = self.collision_geo.intersect(
+            origin, direction, hit_P, hit_N, hit_uvw
+        )
 
         updates = {}
 
@@ -376,7 +392,9 @@ class LBState(object):
                 # state. If we were previously in a placement state, we need to
                 # remove the index that was currently being used to paint
                 if not self.in_select_mode:
-                    self.elements_parm.removeMultiParmInstance(self.current_parm_idx - 1)
+                    self.elements_parm.removeMultiParmInstance(
+                        self.current_parm_idx - 1
+                    )
                     self.current_parm_idx = None
                     self.current_id = -1
                 self.in_select_mode = True
@@ -388,7 +406,7 @@ class LBState(object):
 
                 if found is not None:
                     # Something is under our cursor
-                    idx, selected_id, pixel_pos = found
+                    idx, selected_id, pixel_pos, flip = found
                     uv_x = pixel_pos[0] + self.bitmap_res[selected_id][0] // 2
                     uv_x /= self.bg_res[0]
                     uv_x += 1
@@ -402,7 +420,7 @@ class LBState(object):
                     # If nothing is selected then we want to highlight it
                     if self.picked_index is None:
                         self.outline.show(True)
-                        self.set_border_geo(sprite_P, selected_id)
+                        self.set_border_geo(sprite_P, bitmap_id=selected_id, flip=flip)
 
                     if reason == hou.uiEventReason.Picked:
                         # Something has been picked
@@ -413,11 +431,11 @@ class LBState(object):
                             # need to update here.
                             self.last_element = self.bitmap_values(idx)
                             self.current_id = selected_id
+                            self.current_flip = flip
                             self.current_parm_idx = idx
                             self.picked_index = idx
-                            if self.picked_index is not None:
-                                self.set_border_geo(sprite_P, selected_id)
-                                self.hit_P = sprite_P
+                            self.set_border_geo(sprite_P, bitmap_id=selected_id, flip=flip)
+                            self.hit_P = sprite_P
                             self.outline.show(True)
                         elif device.isMiddleButton():
                             # We have deleted something and should hide the outline
@@ -426,12 +444,13 @@ class LBState(object):
                             self.picked_index = None
                             self.current_parm_idx = None
                             self.current_id = -1
-                            self.elements_parm.removeMultiParmInstance(idx-1)
+                            self.elements_parm.removeMultiParmInstance(idx - 1)
                             self.outline.show(False)
                 elif reason == hou.uiEventReason.Picked and device.isLeftButton():
                     # If there is nothing under our cursor and we clicked
                     # we unselect the previous pick and hide the outline
                     self.picked_index = None
+                    self.current_parm_idx = None
                     self.outline.show(False)
                 elif self.picked_index is None:
                     # Last if there isn't a bitmap under our cursor and nothing
@@ -452,6 +471,7 @@ class LBState(object):
                     # For now, we'll go with defaults
                     element = self.add_bitmap()
                     self.current_id = element.bitmap_id
+                    self.current_flip = element.flip
 
                 self.hit_P = hit_P
                 self.picked_index = None

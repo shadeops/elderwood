@@ -5,5 +5,6 @@ zig-cache
 .DS_Store
 .sentry-native
 backup
+archive
 __pycache__
-hips
+*.hiplc
