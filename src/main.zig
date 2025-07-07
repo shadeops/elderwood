@@ -81,7 +81,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     if (delta.x < 0) global_state.flipped = true;
     if (delta.x > 0) global_state.flipped = false;
 
-    playdate.sprite.drawSprites();
+    playdate.sprite.updateAndDrawSprites();
 
     playdate.graphics.drawBitmap(
         global_state.bitlib.bitmaps[global_state.frame + 1],

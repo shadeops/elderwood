@@ -7,19 +7,32 @@ const base_types = @import("base_types.zig");
 const Position = base_types.Position;
 
 const level_json = @embedFile("level.json");
-const debug = builtin.mode == .Debug;
+
+const enable_debug = false;
+const debug = if (builtin.mode == .Debug and enable_debug) true else false;
+
+// This is incredibly annoying. The majority of functions allow you to pass around
+// userData so various data and the Playdate API can be passed around. However for
+// the sprite update functions to fetch the userData or any other info requires
+// the Playdate API and the only way to fetch that is through a global annoyingly.
+// To work around this, in the Level.init, we'll set the ptr if it is null
+var global_playdate_ptr: ?*const pdapi.PlaydateAPI = null;
 
 const Level = @This();
-
 const max_sprites = 128;
 
 sprites: []*pdapi.LCDSprite,
+// TODO: Given that we have to have a global playdate pointer, we can probably remove this
 playdate: *const pdapi.PlaydateAPI,
 bitmap_lib: BitmapLib,
 
 // TODO, bitmap_lib might make more sense to pass to the parser and not live with the
 //       Level
 pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: BitmapLib) Level {
+    if (global_playdate_ptr == null) {
+        global_playdate_ptr = playdate;
+    }
+
     const sprites_ptr: [*]*pdapi.LCDSprite = @ptrCast(@alignCast(playdate.system.realloc(
         null,
         @sizeOf(*pdapi.LCDSprite) * max_sprites,
@@ -42,7 +55,7 @@ pub fn deinit(self: *Level) void {
     _ = self.playdate.system.realloc(self.sprites.ptr, 0);
 }
 
-fn addSprite(self: *Level, placement: SpritePlacement) error{LevelFull}!void {
+fn createSprite(self: *Level, placement: SpritePlacement) error{LevelFull}!void {
     if (self.sprites.len + 1 >= max_sprites) return error.LevelFull;
     const pd = self.playdate;
     const sprite = pd.sprite.newSprite() orelse unreachable;
@@ -54,38 +67,64 @@ fn addSprite(self: *Level, placement: SpritePlacement) error{LevelFull}!void {
     const bitmap = self.bitmap_lib.bitmaps[@intCast(id)];
     var img_width: c_int = 0;
     var img_height: c_int = 0;
-    pd.graphics.getBitmapData(
-        bitmap,
-        &img_width,
-        &img_height,
-        null,
-        null,
-        null
-    );
+    pd.graphics.getBitmapData(bitmap, &img_width, &img_height, null, null, null);
     pd.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
-    
+
     // This is required since the flipped arg of setImage doesn't seem to work.
     pd.sprite.setImageFlip(sprite, if (placement.flip) .BitmapFlippedXY else .BitmapFlippedY);
     pd.sprite.setCenter(sprite, 0.0, 0.0);
     pd.sprite.moveTo(sprite, @floatFromInt(placement.pos.x), @floatFromInt(placement.pos.y));
     pd.sprite.setSize(sprite, @floatFromInt(img_width), @floatFromInt(img_height));
     pd.sprite.setZIndex(sprite, placement.depth);
+    if (placement.animated) {
+        // TODO check return ptr
+        const loop_state: *LoopingSprite = @ptrCast(@alignCast(pd.system.realloc(null, @sizeOf(LoopingSprite))));
+        loop_state.* = .{
+            .id = placement.id,
+            .duration = placement.duration,
+            .frame_offset = placement.frame_offset,
+            .bitmap_lib = self.bitmap_lib,
+        };
+        pd.sprite.setUserdata(sprite, @ptrCast(loop_state));
+        pd.sprite.setUpdateFunction(sprite, LoopingSprite.loopAnimation);
+    }
     self.sprites.len += 1;
     self.sprites[self.sprites.len - 1] = sprite;
 }
 
 pub fn populate(self: *const Level) void {
     for (self.sprites) |sprite| {
-       self.playdate.sprite.addSprite(sprite); 
+        self.playdate.sprite.addSprite(sprite);
     }
 }
+
+const LoopingSprite = struct {
+    id: i16,
+    duration: i16,
+    frame_offset: i16,
+    bitmap_lib: BitmapLib,
+
+    fn loopAnimation(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
+        const playdate = global_playdate_ptr orelse return;
+        const userdata = playdate.sprite.getUserdata(sprite) orelse return;
+        const loop_state: *LoopingSprite = @ptrCast(@alignCast(userdata));
+        loop_state.frame_offset = @rem(loop_state.frame_offset + 1, loop_state.duration);
+        playdate.sprite.setImage(
+            sprite,
+            loop_state.bitmap_lib.bitmaps[@intCast(loop_state.id + loop_state.frame_offset)],
+            playdate.sprite.getImageFlip(sprite),
+        );
+    }
+};
 
 const SpritePlacement = struct {
     id: i16 = -1,
     depth: i16 = 0,
     pos: Position = .{},
     frame_offset: i16 = 0,
+    duration: i16 = 1,
     flip: bool = false,
+    animated: bool = false,
 };
 
 pub const LevelParser = struct {
@@ -128,6 +167,10 @@ pub const LevelParser = struct {
                 jstate.sprite_placement.frame_offset = @intCast(value.data.intval);
             } else if (std.mem.eql(u8, "flip", key_name)) {
                 jstate.sprite_placement.flip = (value.type == @intFromEnum(pdapi.JSONValueType.JSONTrue));
+            } else if (std.mem.eql(u8, "animated", key_name)) {
+                jstate.sprite_placement.animated = (value.type == @intFromEnum(pdapi.JSONValueType.JSONTrue));
+            } else if (std.mem.eql(u8, "duration", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
+                jstate.sprite_placement.duration = @intCast(value.data.intval);
             }
         }
         if (debug) pd.system.logToConsole("[%s] didDecodeTableValue: %s [%d]", decoder.?.path, key, value.type);
@@ -156,7 +199,7 @@ pub const LevelParser = struct {
         const pd = level.playdate;
         const key_name = std.mem.sliceTo(name orelse return null, 0);
         if (std.mem.eql(u8, "sprite", key_name)) {
-            level.addSprite(jstate.sprite_placement) catch {
+            level.createSprite(jstate.sprite_placement) catch {
                 pd.system.logToConsole("ERROR: Unable to add sprite, Level full");
                 return null;
             };
@@ -181,9 +224,6 @@ pub const LevelParser = struct {
             .path = null,
         };
         if (debug) self.level.playdate.system.logToConsole("Json Size: %d\n", level_json.len);
-
         _ = self.level.playdate.json.decodeString(&json_decoder, level_json, null);
     }
 };
-
-

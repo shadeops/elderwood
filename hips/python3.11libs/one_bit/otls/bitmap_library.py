@@ -4,20 +4,50 @@ import array
 import itertools
 
 import numpy
+import math
 
 import hou
+
+
+ignored_parm_templates = (
+    hou.ButtonParmTemplate,
+    hou.FolderParmTemplate,
+    hou.FolderSetParmTemplate,
+    hou.LabelParmTemplate,
+    hou.SeparatorParmTemplate,
+)
 
 
 def multiparm_iter(parm):
     parms = parm.multiParmInstances()
     num = parm.multiParmInstancesPerItem()
     for i in range(0, len(parms), num):
-        yield parms[i : i + num]
+        yield [
+            p
+            for p in parms[i : i + num]
+            if not isinstance(p.parmTemplate(), ignored_parm_templates)
+        ]
 
 
 def encode_volume(vol):
+    res = vol.resolution()
+
     voxel_array = array.array("f")
     voxel_array.frombytes(vol.allVoxelsAsString())
+
+    # The Playdate internally stores bitmaps as an array of ints
+    # So in a given row there will always be some multiple of 4 bytes of data
+    # (aka rowbytes). To make things easier / faster when streaming levels into
+    # the Playdate we'll pad the bitmaps here, at the cost of some extra space
+    if res[0] % 32 != 0:
+        padded_xres = int(math.ceil(res[0]/32))*32
+        padded_voxel_array = array.array("f", [0.0,])
+        padded_voxel_array *= padded_xres
+        padded_voxel_array *= res[1]
+        for row in range(0, res[1]):
+            padded_voxel_array[row*padded_xres : row*padded_xres+res[0]] = voxel_array[row*res[0] : row*res[0]+res[0]]
+        voxel_array = padded_voxel_array
+
     bitarray = numpy.packbits(numpy.array(voxel_array, dtype="bool"))
     return str(base64.urlsafe_b64encode(bitarray), "ascii")
 
@@ -77,7 +107,7 @@ def get_img_mask_prims(node, get_mask=True, frame=None):
     return img_vol, mask_vol, (resx, resy)
 
 
-def build_library(node):
+def build_library(node, frame=None):
 
     export_bitmaps = []
 
@@ -99,7 +129,7 @@ def build_library(node):
 
         export_bitmaps.append(bitmap_group)
 
-        frame_list = [None]
+        frame_list = [frame]
         if not static:
             frame_list = list(range(start_frame, end_frame + 1))
 
@@ -137,6 +167,16 @@ def export_callback(node):
     image_export = build_library(node)
     with open(path, "w") as json_f:
         json.dump(image_export, json_f, indent=1)
+
+
+def library_to_detail(hda_node, node, frame=None):
+    geo = node.geometry()
+    bitlib_atr = geo.addAttrib(
+        hou.attribType.Global, "bitmap_library", {}, create_local_variable=False
+    )
+    geo.setGlobalAttribValue("bitmap_library", build_library(hda_node, frame=frame))
+    #v = {"test" : 1}
+    #geo.setGlobalAttribValue("bitmap_library", v)
 
 
 def library_to_pts(hda_node, node, frame=None):

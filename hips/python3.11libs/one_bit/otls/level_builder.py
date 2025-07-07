@@ -45,8 +45,10 @@ def iter_elements_parms(node):
 #     {"bitmap_id" : int},
 #     {"position" : [int, int]},
 #     {"depth" : int},
-#     {"frame_offset" : int},
 #     {"flip" : bool},
+#     {"frame_offset" : int},
+#     {"animated" : bool},
+#     {"duration" : int},
 #    }},
 #    {"sprite" : {
 #      ...
@@ -56,6 +58,29 @@ def iter_elements_parms(node):
 
 
 def build_level(node):
+
+    # TODO: Possibly replace this with the info from the detail (ie: library_to_detail)
+
+    # The naming is a bit convoluted. It Houdini we refer to the "bitmap_id" as a reference
+    # to which 'element' we are using. Where the element might be animated and have multiple
+    # frames. On the Playdate side we just have an array of "bitmap_id"s which is a flatten
+    # list of all the bitmaps. We use the id_offset to map between Houdini's bitmap_ids (element_ids)
+    # to the Playdate's bitmap_ids
+    # TODO: Renaming all usage of bitmap_id with element_id in Houdini.
+    elements = []
+    id_offset = 0
+    for pt in node.node("bitmap_library").geometry().points():
+        static = pt.attribValue("static")
+        start_frame = pt.attribValue("start_frame")
+        end_frame = pt.attribValue("end_frame")
+        duration = 1 if static else end_frame - start_frame + 1
+        elements.append({
+            "animated" : True if not static else False,
+            "duration" : duration,
+            "bitmap_offset" : id_offset,
+        })
+        id_offset += 1 if static else duration
+
     export_elements = []
     level_name = (
         level_name if (level_name := node.parm("level_name").eval()) else "None"
@@ -68,13 +93,15 @@ def build_level(node):
             sprite_list,
         ]
     }
-    for bitmap_id, pos_x, pos_y, depth, foffset, flip in iter_elements_parms(node):
-
+    for element_id, pos_x, pos_y, depth, foffset, flip in iter_elements_parms(node):
+        element = elements[element_id]
         sprite = {
             "sprite": {
-                "bitmap_id": bitmap_id,
+                "bitmap_id": element["bitmap_offset"],
                 "position": [pos_x, pos_y],
                 "depth": depth,
+                "animated" : element["animated"],
+                "duration" : element["duration"],
                 "frame_offset": foffset,
                 "flip": flip,
             }

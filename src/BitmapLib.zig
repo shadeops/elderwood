@@ -3,10 +3,11 @@ const builtin = @import("builtin");
 const pdapi = @import("playdate_api_definitions.zig");
 
 const library = @embedFile("library.json");
-const debug = builtin.mode == .Debug;
+
+const enable_debug = false;
+const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
 const BitmapLib = @This();
-
 const max_bitmaps = 128;
 
 bitmaps: []*pdapi.LCDBitmap,
@@ -193,4 +194,3 @@ pub const BitmapLibParser = struct {
         if (debug) self.bitlib.playdate.system.logToConsole("[%d] [%d]", self.resx, self.resy, self.has_mask);
     }
 };
-
