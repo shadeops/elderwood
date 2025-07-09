@@ -8,7 +8,6 @@ import math
 
 import hou
 
-
 ignored_parm_templates = (
     hou.ButtonParmTemplate,
     hou.FolderParmTemplate,
@@ -40,12 +39,19 @@ def encode_volume(vol):
     # (aka rowbytes). To make things easier / faster when streaming levels into
     # the Playdate we'll pad the bitmaps here, at the cost of some extra space
     if res[0] % 32 != 0:
-        padded_xres = int(math.ceil(res[0]/32))*32
-        padded_voxel_array = array.array("f", [0.0,])
+        padded_xres = int(math.ceil(res[0] / 32)) * 32
+        padded_voxel_array = array.array(
+            "f",
+            [
+                0.0,
+            ],
+        )
         padded_voxel_array *= padded_xres
         padded_voxel_array *= res[1]
         for row in range(0, res[1]):
-            padded_voxel_array[row*padded_xres : row*padded_xres+res[0]] = voxel_array[row*res[0] : row*res[0]+res[0]]
+            padded_voxel_array[row * padded_xres : row * padded_xres + res[0]] = (
+                voxel_array[row * res[0] : row * res[0] + res[0]]
+            )
         voxel_array = padded_voxel_array
 
     bitarray = numpy.packbits(numpy.array(voxel_array, dtype="bool"))
@@ -111,6 +117,7 @@ def build_library(node, frame=None):
 
     export_bitmaps = []
 
+    total_bitmaps = 0
     for sop, mask, static, start_frame, end_frame in iter_bitmap_parms(node):
 
         bitmap_group_imgs = []
@@ -156,7 +163,9 @@ def build_library(node, frame=None):
             }
 
             bitmap_group_imgs.append(bitmap_obj)
+            total_bitmaps += 1
 
+    export_bitmaps.insert(0, {".total_sprites." :total_bitmaps})
     return {"bitmap_library": export_bitmaps}
 
 
@@ -175,8 +184,8 @@ def library_to_detail(hda_node, node, frame=None):
         hou.attribType.Global, "bitmap_library", {}, create_local_variable=False
     )
     geo.setGlobalAttribValue("bitmap_library", build_library(hda_node, frame=frame))
-    #v = {"test" : 1}
-    #geo.setGlobalAttribValue("bitmap_library", v)
+    # v = {"test" : 1}
+    # geo.setGlobalAttribValue("bitmap_library", v)
 
 
 def library_to_pts(hda_node, node, frame=None):

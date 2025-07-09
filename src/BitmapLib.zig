@@ -8,23 +8,17 @@ const enable_debug = false;
 const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
 const BitmapLib = @This();
-const max_bitmaps = 128;
 
 bitmaps: []*pdapi.LCDBitmap,
 playdate: *const pdapi.PlaydateAPI,
 
-pub fn init(playdate: *const pdapi.PlaydateAPI) BitmapLib {
-    const bitmaps_ptr: [*]*pdapi.LCDBitmap = @ptrCast(@alignCast(playdate.system.realloc(
-        null,
-        @sizeOf(*pdapi.LCDBitmap) * max_bitmaps,
-    ) orelse unreachable));
-    var bitlib = BitmapLib{
-        .bitmaps = bitmaps_ptr[0..max_bitmaps],
+pub fn init(playdate: *const pdapi.PlaydateAPI) *BitmapLib {
+    const bitlib_ptr: *BitmapLib = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(BitmapLib))));
+    bitlib_ptr.* = BitmapLib{
+        .bitmaps = undefined,
         .playdate = playdate,
     };
-    if (debug) playdate.system.logToConsole("len of bitlibs %d", bitlib.bitmaps.len);
-    bitlib.bitmaps.len = 0;
-    return bitlib;
+    return bitlib_ptr;
 }
 
 pub fn deinit(self: *BitmapLib) void {
@@ -35,18 +29,13 @@ pub fn deinit(self: *BitmapLib) void {
     _ = self.playdate.system.realloc(self.bitmaps.ptr, 0);
 }
 
-pub fn addMap(self: *BitmapLib, bitmap: *pdapi.LCDBitmap) error{LibraryFull}!void {
-    if (self.bitmaps.len + 1 >= max_bitmaps) return error.LibraryFull;
-    self.bitmaps.len += 1;
-    self.bitmaps[self.bitmaps.len - 1] = bitmap;
-}
-
 pub const BitmapLibParser = struct {
     in_spec: bool = false,
     resx: c_int = 0,
     resy: c_int = 0,
     has_mask: bool = false,
     bitlib: *BitmapLib,
+    added_bitmaps: usize = 0,
 
     fn decodeError(decoder: ?*pdapi.JSONDecoder, jerror: ?[*:0]const u8, linenum: c_int) callconv(.C) void {
         const jstate: *const BitmapLibParser = @ptrCast(@alignCast((decoder orelse return).userdata));
@@ -75,7 +64,8 @@ pub const BitmapLibParser = struct {
         const bitlib = jstate.bitlib;
         const pd = bitlib.playdate;
 
-        if (value.type != @intFromEnum(pdapi.JSONValueType.JSONString)) {
+        if (debug) pd.system.logToConsole("[%s] didDecodeTableValue: %s %d", decoder.?.path, key, value.type);
+        if (value.type != @intFromEnum(pdapi.JSONValueType.JSONString) and value.type != @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
             return;
         }
         const key_name = std.mem.sliceTo(key orelse return, 0);
@@ -85,7 +75,20 @@ pub const BitmapLibParser = struct {
         var image_height: c_int = 0;
         var mask: [*c]u8 = null;
         var data: [*c]u8 = null;
-        if (std.mem.eql(u8, "img", key_name)) {
+        if (std.mem.eql(u8, ".total_sprites.", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
+            // This must be first in bitmap_library array for the allocation to take place.
+            if (value.data.intval < 0) {
+                pd.system.logToConsole("ERROR: Invalid number of sprites");
+                return;
+            }
+            const bitmaps_ptr: [*]*pdapi.LCDBitmap = @ptrCast(@alignCast(pd.system.realloc(
+                null,
+                @intCast(@sizeOf(*pdapi.LCDBitmap) * (value.data.intval)),
+            ) orelse unreachable));
+            bitlib.bitmaps = bitmaps_ptr[0..@intCast(value.data.intval)];
+            jstate.added_bitmaps = 0;
+            if (debug) pd.system.logToConsole("len of bitlibs %d", bitlib.bitmaps.len);
+        } else if (std.mem.eql(u8, "img", key_name)) {
             const bitmap = pd.graphics.newBitmap(
                 jstate.resx,
                 jstate.resy,
@@ -102,24 +105,24 @@ pub const BitmapLibParser = struct {
             std.debug.assert(jstate.resx == image_width and jstate.resy == image_height);
             const img_str = std.mem.sliceTo(value.data.stringval, 0);
             const decode_size = std.base64.url_safe.Decoder.calcSizeForSlice(img_str) catch {
-                _ = pd.system.realloc(bitmap, 0);
+                _ = pd.graphics.freeBitmap(bitmap);
                 pd.system.logToConsole("Failed to calc size of %s", key);
                 return;
             };
             if (decode_size == row_bytes * image_height) {
                 std.base64.url_safe.Decoder.decode(data[0..@intCast(row_bytes * image_height)], img_str) catch {
-                    _ = pd.system.realloc(bitmap, 0);
+                    _ = pd.graphics.freeBitmap(bitmap);
                     pd.system.logToConsole("Failed to decode %s", key);
                     return;
                 };
-                bitlib.addMap(bitmap) catch {
-                    _ = pd.system.realloc(bitmap, 0);
+                jstate.addMap(bitmap) catch {
+                    _ = pd.graphics.freeBitmap(bitmap);
                     pd.system.logToConsole("Bitmap Library Full");
                 };
             }
         } else if (std.mem.eql(u8, "img_mask", key_name)) {
             pd.graphics.getBitmapData(
-                bitlib.bitmaps[bitlib.bitmaps.len - 1],
+                bitlib.bitmaps[jstate.added_bitmaps - 1],
                 &image_width,
                 &image_height,
                 &row_bytes,
@@ -145,7 +148,6 @@ pub const BitmapLibParser = struct {
                 };
             }
         }
-        if (debug) pd.system.logToConsole("[%s] didDecodeTableValue: %s", decoder.?.path, key);
     }
 
     //fn shouldDecodeArrayValueAtIndex(decoder: ?*pdapi.JSONDecoder, pos: c_int) callconv(.C) c_int {}
@@ -173,6 +175,13 @@ pub const BitmapLibParser = struct {
         jstate.in_spec = false;
         if (debug) pd.system.logToConsole("didDecodeSublist: %s", name);
         return null;
+    }
+
+    pub fn addMap(self: *BitmapLibParser, bitmap: *pdapi.LCDBitmap) error{LibraryFull}!void {
+        if (debug) self.bitlib.playdate.system.logToConsole("Adding bitmap: %d", self.bitlib.bitmaps.len);
+        if (self.added_bitmaps + 1 > self.bitlib.bitmaps.len) return error.LibraryFull;
+        self.added_bitmaps += 1;
+        self.bitlib.bitmaps[self.added_bitmaps-1] = bitmap;
     }
 
     pub fn buildLibrary(self: *BitmapLibParser) void {

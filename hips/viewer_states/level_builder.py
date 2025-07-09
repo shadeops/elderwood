@@ -14,6 +14,12 @@ class Border:
     grid = "grid"
     outline = "outline"
 
+class AutoDepth:
+    none = "none"
+    inc = "increment"
+    ymax = "ymax"
+    ymin = "ymin"
+
 
 class Element:
     def __init__(self, *args, **kwargs):
@@ -68,7 +74,7 @@ class LBState(object):
         self.last_element = None
 
         # Menu Options
-        self.auto_inc_depth = True
+        self.auto_depth = AutoDepth.inc
         self.border_mode = Border.outline
 
         self.border_geo = None
@@ -160,8 +166,12 @@ class LBState(object):
             element = Element()
 
         element.bitmap_id = max(element.bitmap_id, 0)
-        if self.auto_inc_depth:
+        if self.auto_depth == AutoDepth.inc:
             element.depth += 1
+        elif self.auto_depth == AutoDepth.ymin:
+            element.depth = element.pos[1]
+        elif self.auto_depth == AutoDepth.ymax:
+            element.depth = element.pos[1] + self.bitmap_res[element.bitmap_id][1]
 
         with hou.undos.disabler():
             self.current_parm_idx = self.elements_parm.evalAsInt() + 1
@@ -353,6 +363,12 @@ class LBState(object):
         with hou.undos.disabler():
             current_bitmap_parm.set(self.current_id)
             node.parmTuple(f"position{idx}").set(new_pos)
+            if self.auto_depth == AutoDepth.ymin:
+                depth = new_pos[1]
+                self.node.parm(f"depth{self.current_parm_idx}").set(depth)
+            elif self.auto_depth == AutoDepth.ymax:
+                depth = new_pos[1] + new_res[1]
+                self.node.parm(f"depth{self.current_parm_idx}").set(depth)
 
         self.set_border_geo(self.hit_P)
 
@@ -478,12 +494,17 @@ class LBState(object):
                 self.in_select_mode = False
 
                 with hou.undos.disabler():
-                    self.node.parmTuple(f"position{self.current_parm_idx}").set(
-                        [
+                    new_pos = (
                             pixel_x - self.bitmap_res[self.current_id][0] // 2,
                             pixel_y - self.bitmap_res[self.current_id][1] // 2,
-                        ]
-                    )
+                        )
+                    self.node.parmTuple(f"position{self.current_parm_idx}").set(new_pos)
+                    if self.auto_depth == AutoDepth.ymin:
+                        depth = new_pos[1]
+                        self.node.parm(f"depth{self.current_parm_idx}").set(depth)
+                    elif self.auto_depth == AutoDepth.ymax:
+                        depth = new_pos[1] + self.bitmap_res[self.current_id][1]
+                        self.node.parm(f"depth{self.current_parm_idx}").set(depth)
 
                 if reason == hou.uiEventReason.Picked and device.isLeftButton():
                     element = self.add_bitmap()
@@ -504,7 +525,7 @@ class LBState(object):
     def onMenuAction(self, kwargs):
         self.border_mode = kwargs["outline_type"]
         self.outline.enable(kwargs["outline_type"] != Border.none)
-        self.auto_inc_depth(kwargs["auto_depth"])
+        self.auto_depth = kwargs["auto_depth"]
 
 
 def createViewerStateTemplate():
@@ -522,7 +543,11 @@ def createViewerStateTemplate():
     menu = hou.ViewerStateMenu("options", "Editor Options")
     # TODO Add hotkey for this
     menu.addToggleItem("sample_mask", "Sample Mask For Selection", True)
-    menu.addToggleItem("auto_depth", "Auto Increment Depth", True)
+    menu.addRadioStrip("auto_depth", "Auto Depth Mode", AutoDepth.inc)
+    menu.addRadioStripItem("auto_depth", AutoDepth.none, "Off")
+    menu.addRadioStripItem("auto_depth", AutoDepth.inc, "Increment")
+    menu.addRadioStripItem("auto_depth", AutoDepth.ymin, "Set to Top of Sprite")
+    menu.addRadioStripItem("auto_depth", AutoDepth.ymax, "Set to Bottom of Sprite")
     menu.addSeparator()
     menu.addRadioStrip("outline_type", "Bitmap Outline Style", Border.outline)
     menu.addRadioStripItem("outline_type", Border.none, "None")

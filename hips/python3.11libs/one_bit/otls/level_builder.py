@@ -38,6 +38,26 @@ def iter_elements_parms(node):
         yield (bitmap_id, pos_x, pos_y, depth, foffset, flip)
 
 
+def reorder_callback(kwargs):
+    node = kwargs["node"]
+    reverse = kwargs["script_value"] == "high_to_low"
+    elements = []
+    for element in iter_elements_parms(node):
+        elements.append(element)
+    print(elements)
+    node.parm("elements").set(0)
+    node.parm("elements").set(len(elements))
+    elements.sort(key=lambda x: x[3], reverse=reverse)
+    for element, parms in zip(elements, multiparm_iter(node.parm("elements"))):
+        bitmap_id, pos_x, pos_y, depth, foffset, flip = parms
+        bitmap_id.set(element[0])
+        pos_x.set(element[1])
+        pos_y.set(element[2])
+        depth.set(element[3])
+        foffset.set(element[4])
+        flip.set(element[5])
+
+
 # {"level_name" : [
 #   {"total_sprites" : int},
 #   [
@@ -74,11 +94,13 @@ def build_level(node):
         start_frame = pt.attribValue("start_frame")
         end_frame = pt.attribValue("end_frame")
         duration = 1 if static else end_frame - start_frame + 1
-        elements.append({
-            "animated" : True if not static else False,
-            "duration" : duration,
-            "bitmap_offset" : id_offset,
-        })
+        elements.append(
+            {
+                "animated": True if not static else False,
+                "duration": duration,
+                "bitmap_offset": id_offset,
+            }
+        )
         id_offset += 1 if static else duration
 
     export_elements = []
@@ -89,7 +111,7 @@ def build_level(node):
     sprite_list = []
     level_dict = {
         level_name: [
-            {"total_sprites": total_elements},
+            {".total_sprites.": total_elements},
             sprite_list,
         ]
     }
@@ -100,8 +122,8 @@ def build_level(node):
                 "bitmap_id": element["bitmap_offset"],
                 "position": [pos_x, pos_y],
                 "depth": depth,
-                "animated" : element["animated"],
-                "duration" : element["duration"],
+                "animated": element["animated"],
+                "duration": element["duration"],
                 "frame_offset": foffset,
                 "flip": flip,
             }
