@@ -35,20 +35,20 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             var level_parser = Level.LevelParser{ .level = level };
             level_parser.buildLevel();
             level.populate();
-            
             const player = Player.init(playdate, bitmap_lib, 0, 18) catch unreachable;
             playdate.sprite.addSprite(player.sprite);
-            
-            const bitmap = playdate.graphics.newBitmap(200, 50, @intFromEnum(pdapi.LCDSolidColor.ColorClear));
-            const sprite = playdate.sprite.newSprite();
-            playdate.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
-            playdate.sprite.setCenter(sprite, 0, 0);
-            playdate.sprite.setSize(sprite, 200, 50);
-            playdate.sprite.moveTo(sprite, 50, 100);
-            playdate.sprite.setCollisionsEnabled(sprite, 1);
-            playdate.sprite.setCollideRect(sprite, .{ .x = 0.0, .y = 0.0, .width = 200.0, .height = 50.0 });
-            playdate.sprite.setTag(sprite, 5);
-            playdate.sprite.addSprite(sprite);
+
+            //const bitmap = playdate.graphics.newBitmap(200, 50, @intFromEnum(pdapi.LCDSolidColor.ColorBlack));
+            //const sprite = playdate.sprite.newSprite();
+            //playdate.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
+            //playdate.sprite.setCenter(sprite, 0, 0);
+            //playdate.sprite.setSize(sprite, 200, 50);
+            //playdate.sprite.moveTo(sprite, 50, 100);
+            //playdate.sprite.setCollisionsEnabled(sprite, 1);
+            //playdate.sprite.setCollideRect(sprite, .{ .x = 0.0, .y = 0.0, .width = 200.0, .height = 50.0 });
+            //playdate.sprite.setVisible(sprite, 0);
+            //playdate.sprite.setTag(sprite, 5);
+            //playdate.sprite.addSprite(sprite);
 
             const global_state: *GlobalState =
                 @ptrCast(@alignCast(

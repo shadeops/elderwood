@@ -92,10 +92,10 @@ pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: *const BitmapLib, id
     // This is required since the flipped arg of setImage doesn't seem to work.
     playdate.sprite.setImageFlip(sprite, .BitmapFlippedY);
     playdate.sprite.setCenter(sprite, 0.0, 0.0);
-    playdate.sprite.moveTo(sprite, 0.0, 0.0);
+    playdate.sprite.moveTo(sprite, 100.0, 100.0);
     playdate.sprite.setSize(sprite, @floatFromInt(img_width), @floatFromInt(img_height));
     playdate.sprite.setCollisionsEnabled(sprite, 1);
-    playdate.sprite.setCollideRect(sprite, .{ .x = 0.0, .y = 58.0, .width = 64.0, .height = 6.0 });
+    playdate.sprite.setCollideRect(sprite, .{ .x = 16.0, .y = 54.0, .width = 32.0, .height = 6.0 });
     playdate.sprite.setCollisionResponseFunction(sprite, playerCollider);
     playdate.sprite.setZIndex(sprite, 0.0);
 

@@ -9,13 +9,12 @@ const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
 const BitmapLib = @This();
 
-bitmaps: []*pdapi.LCDBitmap,
+bitmaps: []*pdapi.LCDBitmap = &.{},
 playdate: *const pdapi.PlaydateAPI,
 
 pub fn init(playdate: *const pdapi.PlaydateAPI) *BitmapLib {
     const bitlib_ptr: *BitmapLib = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(BitmapLib))));
     bitlib_ptr.* = BitmapLib{
-        .bitmaps = undefined,
         .playdate = playdate,
     };
     return bitlib_ptr;
@@ -25,7 +24,7 @@ pub fn deinit(self: *BitmapLib) void {
     for (self.bitmaps) |bitmap| {
         self.playdate.graphics.freeBitmap(bitmap);
     }
-    self.bitmaps.len = 0;
+    self.bitmaps = &.{};
     _ = self.playdate.system.realloc(self.bitmaps.ptr, 0);
 }
 
@@ -181,7 +180,7 @@ pub const BitmapLibParser = struct {
         if (debug) self.bitlib.playdate.system.logToConsole("Adding bitmap: %d", self.bitlib.bitmaps.len);
         if (self.added_bitmaps + 1 > self.bitlib.bitmaps.len) return error.LibraryFull;
         self.added_bitmaps += 1;
-        self.bitlib.bitmaps[self.added_bitmaps-1] = bitmap;
+        self.bitlib.bitmaps[self.added_bitmaps - 1] = bitmap;
     }
 
     pub fn buildLibrary(self: *BitmapLibParser) void {

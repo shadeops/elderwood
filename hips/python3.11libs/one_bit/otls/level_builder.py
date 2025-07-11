@@ -37,6 +37,23 @@ def iter_elements_parms(node):
         flip = bool(flip.eval())
         yield (bitmap_id, pos_x, pos_y, depth, foffset, flip)
 
+def iter_colliders_parms(node):
+    colliders_parm = node.parm("colliders")
+    num_colliders= colliders_parm.eval()
+    parm_groups = multiparm_iter(colliders_parm)
+
+    for collider in parm_groups:
+        ctype, r, g, b, xpos, ypos, resx, resy, tag = collider
+        ctype = ctype.evalAsInt()
+        if ctype == 0:
+            continue
+        xpos = xpos.evalAsInt()
+        ypos = ypos.evalAsInt()
+        resx = resx.evalAsInt()
+        resy = resy.evalAsInt()
+        tag = tag.evalAsInt()
+        yield (ctype, xpos, ypos, resx, resy, tag)
+
 
 def reorder_callback(kwargs):
     node = kwargs["node"]
@@ -58,8 +75,9 @@ def reorder_callback(kwargs):
         flip.set(element[5])
 
 
-# {"level_name" : [
-#   {"total_sprites" : int},
+# {"level_name" : {
+#  {"sprites" : [
+#   {".total_sprites." : int},
 #   [
 #    {"sprite" : {
 #     {"bitmap_id" : int},
@@ -73,8 +91,23 @@ def reorder_callback(kwargs):
 #    {"sprite" : {
 #      ...
 #    }},
-#   ]
-# ]}
+#   ],
+#  ]},
+#  {"colliders" : [
+#   {".total_colliders." : int},
+#   [
+#    {"collider" : {
+#     {"position" : [int, int]},
+#     {"resx" : int},
+#     {"resy" : int},
+#     {"tag" : int},
+#    }},
+#    {"collider" : {
+#      ...
+#    }},
+#   ],
+#  ]},
+# }}
 
 
 def build_level(node):
@@ -107,16 +140,28 @@ def build_level(node):
     level_name = (
         level_name if (level_name := node.parm("level_name").eval()) else "None"
     )
-    total_elements = node.parm("elements").evalAsInt()
+    total_elements = 0
+    total_colliders = 0
+
     sprite_list = []
+    collider_list = []
     level_dict = {
-        level_name: [
-            {".total_sprites.": total_elements},
-            sprite_list,
-        ]
+        level_name: {
+            "sprites" : [
+                {".total_sprites.": total_elements},
+                sprite_list,
+            ],
+            "colliders" : [
+                {".total_colliders.": total_colliders},
+                collider_list,
+            ],
+        }
     }
     for element_id, pos_x, pos_y, depth, foffset, flip in iter_elements_parms(node):
+        if element_id < 0:
+            continue
         element = elements[element_id]
+        total_elements += 1
         sprite = {
             "sprite": {
                 "bitmap_id": element["bitmap_offset"],
@@ -129,6 +174,23 @@ def build_level(node):
             }
         }
         sprite_list.append(sprite)
+    if total_elements:
+        level_dict[level_name]["sprites"][0][".total_sprites."] = total_elements
+    for ctype, xpos, ypos, resx, resy, tag in iter_colliders_parms(node):
+        total_colliders += 1
+        collider = {
+            "collider": {
+                "position": [xpos, ypos],
+                "resx": resx,
+                "resy": resy,
+                "tag": tag,
+                "ctype": ctype,
+            }
+        }
+        collider_list.append(collider)
+    if total_colliders:
+        level_dict[level_name]["colliders"][0][".total_colliders."] = total_colliders
+
     return level_dict
 
 

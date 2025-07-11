@@ -210,8 +210,13 @@ def library_to_pts(hda_node, node, frame=None):
     mask_atr = geo.addAttrib(
         hou.attribType.Point, "has_mask", 0, create_local_variable=False
     )
+    bitmap_id_atr = geo.addAttrib(
+        hou.attribType.Point, "bitmap_id", -1, create_local_variable=False
+    )
 
-    for sop, mask, static, start_frame, end_frame in iter_bitmap_parms(hda_node):
+
+    for i, parms in enumerate(iter_bitmap_parms(hda_node)):
+        sop, mask, static, start_frame, end_frame = parms
         try:
             img_vol, mask_vol, res = get_img_mask_prims(sop, get_mask=mask, frame=frame)
         except VolumeError:
@@ -220,6 +225,7 @@ def library_to_pts(hda_node, node, frame=None):
         pt = geo.createPoint()
         pt.setAttribValue(bitmap_atr, sop.path())
         pt.setAttribValue(static_atr, static)
+        pt.setAttribValue(bitmap_id_atr, i)
         if not static:
             pt.setAttribValue(start_atr, start_frame)
             pt.setAttribValue(end_atr, end_frame)

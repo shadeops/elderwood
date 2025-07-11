@@ -84,6 +84,7 @@ class LBState(object):
             self.scene_viewer, hou.Geometry(), "bitmap_border"
         )
 
+
     def set_border_geo(self, pos, bitmap_id=None, flip=None):
         bitmap_id = self.current_id if bitmap_id is None else bitmap_id
         if bitmap_id < 0 or self.border_mode == Border.none:
@@ -308,9 +309,19 @@ class LBState(object):
         self.outline.setOutlineOnly(True)
         self.outline.setOutlineColor(hou.Color((1, 1, 0)))
 
+    def onInterrupt(self, kwargs):
+        self.outline.show(False)
+
+    def onResume(self, kwargs):
+        self.outline.show(True)
+        if self.current_parm_idx > self.elements_parm.evalAsInt():
+            self.last_element = None
+            self.current_parm_idx = self.elements_parm.evalAsInt()
+            self.add_bitmap()
+
     def onExit(self, kwargs):
         # annoyingly this method counts from 0
-        if self.current_parm_idx is not None:
+        if self.current_parm_idx:
             self.elements_parm.removeMultiParmInstance(self.current_parm_idx - 1)
 
     def onKeyEvent(self, kwargs):
