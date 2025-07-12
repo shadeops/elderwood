@@ -42,25 +42,37 @@ fn playerMovement(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
     if (dx > 0) player.flip = false;
     //if (delta.x != 0 or delta.y != 0) global_state.frame = (global_state.frame + 1) % 18;
 
-    if (dx != 0.0 or dy != 0.0) {
-        player.frame_offset = @rem(player.frame_offset + 1, player.duration);
-        playdate.sprite.setImage(
-            sprite,
-            player.bitlib.bitmaps[@intCast(player.id + player.frame_offset)],
-            playdate.sprite.getImageFlip(sprite),
-        );
-        var goalx: f32 = undefined;
-        var goaly: f32 = undefined;
-        var num_hits: c_int = undefined;
-        const hitinfo = playdate.sprite.moveWithCollisions(sprite, x, y, &goalx, &goaly, &num_hits);
-        defer {
-            _ = playdate.system.realloc(hitinfo, 0);
-        }
+    // Exit out if nothing moved, save those cpu cycles!
+    if (dx == 0.0 and dy == 0.0)
+        return;
 
-        //playdate.sprite.moveBy(sprite, dx, dy);
-        playdate.sprite.setZIndex(sprite, @as(i16, @intFromFloat(goaly)) + player.resy);
-        playdate.sprite.setImageFlip(sprite, if (player.flip) .BitmapFlippedXY else .BitmapFlippedY);
+    player.frame_offset = @rem(player.frame_offset + 1, player.duration);
+    playdate.sprite.setImage(
+        sprite,
+        player.bitlib.bitmaps[@intCast(player.id + player.frame_offset)],
+        playdate.sprite.getImageFlip(sprite),
+    );
+    var goalx: f32 = undefined;
+    var goaly: f32 = undefined;
+    var num_hits: c_int = undefined;
+    const hitinfo = playdate.sprite.moveWithCollisions(sprite, x, y, &goalx, &goaly, &num_hits);
+    defer {
+        _ = playdate.system.realloc(hitinfo, 0);
     }
+
+    if (num_hits > 0 ) {
+        for (hitinfo[0..@intCast(num_hits)]) |hit| {
+            if (hit.overlaps != 0) {
+                playdate.system.logToConsole("ERROR: Sprite stuck");
+                break;
+            }
+            // TODO this could be recoverable but would require inspecting the level for a safe spot
+            // or having the level denote a safe place to teleport too if stuck
+        }
+    }
+
+    playdate.sprite.setZIndex(sprite, @as(i16, @intFromFloat(goaly)) + player.resy);
+    playdate.sprite.setImageFlip(sprite, if (player.flip) .BitmapFlippedXY else .BitmapFlippedY);
 }
 
 fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(.C) pdapi.SpriteCollisionResponseType {

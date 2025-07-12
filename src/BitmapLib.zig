@@ -1,7 +1,3 @@
-const std = @import("std");
-const builtin = @import("builtin");
-const pdapi = @import("playdate_api_definitions.zig");
-
 const library = @embedFile("library.json");
 
 const enable_debug = false;
@@ -183,7 +179,7 @@ pub const BitmapLibParser = struct {
         self.bitlib.bitmaps[self.added_bitmaps - 1] = bitmap;
     }
 
-    pub fn buildLibrary(self: *BitmapLibParser) void {
+    pub fn buildLibrary(self: *BitmapLibParser, library_src: JsonSource) void {
         var json_decoder = pdapi.JSONDecoder{
             .decodeError = decodeError,
             .willDecodeSublist = willDecodeSublist,
@@ -196,9 +192,28 @@ pub const BitmapLibParser = struct {
             .returnString = 0,
             .path = null,
         };
-        if (debug) self.bitlib.playdate.system.logToConsole("Json Size: %d\n", library.len);
-
-        _ = self.bitlib.playdate.json.decodeString(&json_decoder, library, null);
-        if (debug) self.bitlib.playdate.system.logToConsole("[%d] [%d]", self.resx, self.resy, self.has_mask);
+        
+        switch (library_src) {
+            .string => |s| _ = self.bitlib.playdate.json.decodeString(&json_decoder, s, null),
+            .file => |f| {
+                var library_reader = JsonReader.init(self.bitlib.playdate, "assets/", f) catch {
+                    self.bitlib.playdate.system.logToConsole("ERROR: failed to build bitmap library");
+                    return;
+                };
+                defer library_reader.deinit();
+                 _ = self.bitlib.playdate.json.decode(&json_decoder, library_reader.json_reader, null);
+            },
+        }
     }
 };
+
+
+const std = @import("std");
+const builtin = @import("builtin");
+const pdapi = @import("playdate_api_definitions.zig");
+
+const base_types = @import("base_types.zig");
+
+const JsonSource = base_types.JsonSource;
+const JsonReader = base_types.JsonReader;
+

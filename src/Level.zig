@@ -15,6 +15,7 @@ sprites: []*pdapi.LCDSprite = &.{},
 // TODO: Given that we have to have a global playdate pointer, we can probably remove this
 playdate: *const pdapi.PlaydateAPI,
 bitlib: *const BitmapLib,
+name: [32:0]u8 = [_:0]u8{0}**32,
 
 pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: *const BitmapLib) *Level {
     if (global_playdate_ptr == null) {
@@ -54,6 +55,11 @@ pub fn populate(self: *const Level) void {
     for (self.colliders) |collider| {
         self.playdate.sprite.addSprite(collider);
     }
+}
+
+pub fn clear(self: *const Level) void {
+    self.playdate.sprite.removeSprites(@ptrCast(self.sprites.ptr), @intCast(self.sprites.len));
+    self.playdate.sprite.removeSprites(@ptrCast(self.colliders.ptr), @intCast(self.colliders.len));
 }
 
 const LoopingSprite = struct {
@@ -173,6 +179,13 @@ pub const LevelParser = struct {
             ) orelse unreachable));
             level.colliders = colliders_ptr[0..@intCast(value.data.intval)];
             if (debug) pd.system.logToConsole("len of sprites %d", level.sprites.len);
+        } else if (std.mem.eql(u8, ".level_name.", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONString)) {
+            const name = std.mem.sliceTo(value.data.stringval, 0);
+            if (name.len > level.name.len) {
+                pd.system.logToConsole("ERROR: %s name too long", value.data.stringval);
+                return;
+            }
+            std.mem.copyForwards(u8, &level.name, name);
         } else {
             switch (jstate.parsed_sprite) {
                 .sprite => |*s| {
@@ -329,8 +342,8 @@ pub const LevelParser = struct {
         self.added_colliders += 1;
         self.level.colliders[self.added_colliders - 1] = sprite;
     }
-
-    pub fn buildLevel(self: *LevelParser) void {
+    
+    pub fn buildLevel(self: *LevelParser, level_src: LevelSource) void {
         var json_decoder = pdapi.JSONDecoder{
             .decodeError = decodeError,
             .willDecodeSublist = willDecodeSublist,
@@ -343,14 +356,26 @@ pub const LevelParser = struct {
             .returnString = 0,
             .path = null,
         };
-        if (debug) self.level.playdate.system.logToConsole("Json Size: %d\n", level_json.len);
-        _ = self.level.playdate.json.decodeString(&json_decoder, level_json, null);
-        self.level.playdate.system.logToConsole("%d %d", self.added_sprites, self.level.sprites.len);
+
+        switch (level_src) {
+            .string => |s| _ = self.level.playdate.json.decodeString(&json_decoder, s, null),
+            .file => |f| {
+                var level_reader = LevelReader.init(self.level.playdate, "assets/levels/", f) catch {
+                    self.level.playdate.system.logToConsole("ERROR: failed to build level");
+                    return;
+                };
+                defer level_reader.deinit();
+                 _ = self.level.playdate.json.decode(&json_decoder, level_reader.json_reader, null);
+            },
+        }
+
         if (self.added_sprites != self.level.sprites.len)
             self.level.playdate.system.logToConsole("ERROR: Not enough sprites added");
         if (self.added_colliders != self.level.colliders.len)
             self.level.playdate.system.logToConsole("ERROR: Not enough colliders added");
+        if (debug) self.level.playdate.system.logToConsole("Loaded %s", &self.level.name);
     }
+    
 };
 
 const std = @import("std");
@@ -359,6 +384,8 @@ const pdapi = @import("playdate_api_definitions.zig");
 
 const BitmapLib = @import("BitmapLib.zig");
 const base_types = @import("base_types.zig");
-const Position = base_types.Position;
 
-const level_json = @embedFile("level.json");
+const Position = base_types.Position;
+const LevelSource = base_types.JsonSource;
+const LevelReader = base_types.JsonReader;
+

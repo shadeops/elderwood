@@ -1,4 +1,5 @@
 import json
+import itertools
 
 import hou
 
@@ -146,7 +147,8 @@ def build_level(node):
     sprite_list = []
     collider_list = []
     level_dict = {
-        level_name: {
+        ".level_name." : level_name,
+        "level_data" : {
             "sprites" : [
                 {".total_sprites.": total_elements},
                 sprite_list,
@@ -192,6 +194,76 @@ def build_level(node):
         level_dict[level_name]["colliders"][0][".total_colliders."] = total_colliders
 
     return level_dict
+
+
+def build_colliders_geo(node):
+
+    node = hou.pwd()
+    geo = node.geometry()
+
+    bg_geo = node.input(1).geometry()
+    bg_vol = bg_geo.prims()[0]
+    xres, yres, zres = bg_vol.resolution()
+    max_res = max(*bg_vol.resolution())
+    xratio = xres/max_res
+    yratio = yres/max_res
+
+    colliders = geo.attribValue("parms")["colliders"]
+
+    sop_cat = hou.sopNodeTypeCategory()
+    grid_verb = sop_cat.nodeVerb("grid")
+    primitive_verb = sop_cat.nodeVerb("primitive")
+    resample_verb = sop_cat.nodeVerb("resample")
+    add_verb = sop_cat.nodeVerb("add")
+    #polyextrude_verb = sop_cat.nodeVerb("polyextrude::2.0")
+    font_verb = sop_cat.nodeVerb("font")
+    primitive_verb.setParms({"closeu" : 5,})
+    #polyextrude_verb.setParms({"dist": -0.01,})
+    resample_verb.setParms({
+        "edge": 1,
+        "length": 0.025,
+        "onlypoints" : 1,
+    })
+    add_verb.setParms({
+        "switcher" : 1,
+        "add": 1,
+    })
+    for collider in colliders:
+        if collider["collider_type#"] == 0:
+            continue
+
+        new_geo = hou.Geometry()
+        size_x = collider["collider_size#"][0]/max_res*2
+        size_y = collider["collider_size#"][1]/max_res*2
+        pos_x = (collider["collider_pos#"][0]/max_res*2)+size_x/2 - xratio
+        pos_y = 1*yratio - (collider["collider_pos#"][1]/max_res*2)-size_y/2
+        grid_verb.setParms({
+            "size": hou.Vector2(size_x, size_y),
+            "rows": 2,
+            "cols": 2,
+            "orient": 0,
+            "t": hou.Vector3(pos_x, pos_y, 0.0),
+        })
+        grid_verb.execute(new_geo, [])
+        primitive_verb.execute(new_geo, [new_geo,])
+        if collider["collider_type#"] == 2:
+            resample_verb.execute(new_geo, [new_geo,])
+            add_verb.execute(new_geo, [new_geo,])
+
+            font_verb.setParms({
+                "text": str(collider["collider_tag#"]),
+                "s": (0.1, 0.1),
+                "t": new_geo.boundingBox().center(),
+            })
+            font_geo = hou.Geometry()
+            font_verb.execute(font_geo, [])
+            primitive_verb.execute(font_geo, [font_geo,])
+            new_geo.merge(font_geo)
+        Cd_atr = new_geo.addAttrib(hou.attribType.Prim, "Cd", [1.0, 1.0, 1.0], create_local_variable=False)
+        nprims = len(new_geo.iterPrims())
+        flood_colors = list(itertools.chain(list(collider["collider_color#"])*nprims))
+        new_geo.setPrimFloatAttribValues("Cd", flood_colors)
+        geo.merge(new_geo)
 
 
 def export_callback(node):
