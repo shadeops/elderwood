@@ -1,4 +1,5 @@
 import json
+import random
 import itertools
 
 import hou
@@ -74,6 +75,25 @@ def reorder_callback(kwargs):
         foffset.set(element[4])
         flip.set(element[5])
 
+
+def randomize_offsets_callback(kwargs):
+    node = kwargs["node"]
+
+    element_duration = {}
+
+    for pt in node.node("bitmap_library").geometry().points():
+        static = pt.attribValue("static")
+        start_frame = pt.attribValue("start_frame")
+        end_frame = pt.attribValue("end_frame")
+        bitmap_id = pt.attribValue("bitmap_id")
+        duration = None if static else end_frame - start_frame + 1
+        element_duration[bitmap_id] = duration
+
+    for parms in multiparm_iter(node.parm("elements")):
+        bitmap_id, _, _, _, foffset, _ = parms
+        duration = element_duration[bitmap_id.evalAsInt()]
+        if duration is not None:
+            foffset.set(random.randint(0, duration-1))
 
 # {"level_name" : {
 #  {"sprites" : [

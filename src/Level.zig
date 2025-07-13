@@ -285,7 +285,10 @@ pub const LevelParser = struct {
             pd.system.logToConsole("ERROR: Invalid bitmap_id %d, len: %d", id, self.level.bitlib.bitmaps.len);
             return;
         }
-        const bitmap = self.level.bitlib.bitmaps[@intCast(id)];
+        // TODO
+        //loop_state.frame_offset = @rem(loop_state.frame_offset + 1, loop_state.duration);
+        const offset: usize = if (placement.animated) @intCast(@mod(placement.frame_offset, placement.duration)) else 0;
+        const bitmap = self.level.bitlib.bitmaps[@as(usize, @intCast(id)) + offset];
         var img_width: c_int = 0;
         var img_height: c_int = 0;
         pd.graphics.getBitmapData(bitmap, &img_width, &img_height, null, null, null);
