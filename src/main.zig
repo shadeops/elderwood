@@ -23,6 +23,7 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
             map.setLevelTags(current_level);
 
             playdate.sprite.moveTo(player.sprite, @floatFromInt(map.player_pos_x), @floatFromInt(map.player_pos_y));
+            playdate.sprite.setZIndex(player.sprite, @intCast(map.player_pos_y));
 
             var level = map.levels[current_level];
             level.populate();
