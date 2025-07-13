@@ -44,7 +44,7 @@ def iter_colliders_parms(node):
     parm_groups = multiparm_iter(colliders_parm)
 
     for collider in parm_groups:
-        ctype, r, g, b, xpos, ypos, resx, resy, tag = collider
+        ctype, r, g, b, xpos, ypos, resx, resy = collider
         ctype = ctype.evalAsInt()
         if ctype == 0:
             continue
@@ -52,8 +52,7 @@ def iter_colliders_parms(node):
         ypos = ypos.evalAsInt()
         resx = resx.evalAsInt()
         resy = resy.evalAsInt()
-        tag = tag.evalAsInt()
-        yield (ctype, xpos, ypos, resx, resy, tag)
+        yield (ctype, xpos, ypos, resx, resy )
 
 
 def reorder_callback(kwargs):
@@ -101,7 +100,6 @@ def reorder_callback(kwargs):
 #     {"position" : [int, int]},
 #     {"resx" : int},
 #     {"resy" : int},
-#     {"tag" : int},
 #    }},
 #    {"collider" : {
 #      ...
@@ -177,21 +175,20 @@ def build_level(node):
         }
         sprite_list.append(sprite)
     if total_elements:
-        level_dict[level_name]["sprites"][0][".total_sprites."] = total_elements
-    for ctype, xpos, ypos, resx, resy, tag in iter_colliders_parms(node):
+        level_dict["level_data"]["sprites"][0][".total_sprites."] = total_elements
+    for ctype, xpos, ypos, resx, resy  in iter_colliders_parms(node):
         total_colliders += 1
         collider = {
             "collider": {
                 "position": [xpos, ypos],
                 "resx": resx,
                 "resy": resy,
-                "tag": tag,
                 "ctype": ctype,
             }
         }
         collider_list.append(collider)
     if total_colliders:
-        level_dict[level_name]["colliders"][0][".total_colliders."] = total_colliders
+        level_dict["level_data"]["colliders"][0][".total_colliders."] = total_colliders
 
     return level_dict
 
@@ -246,19 +243,6 @@ def build_colliders_geo(node):
         })
         grid_verb.execute(new_geo, [])
         primitive_verb.execute(new_geo, [new_geo,])
-        if collider["collider_type#"] == 2:
-            resample_verb.execute(new_geo, [new_geo,])
-            add_verb.execute(new_geo, [new_geo,])
-
-            font_verb.setParms({
-                "text": str(collider["collider_tag#"]),
-                "s": (0.1, 0.1),
-                "t": new_geo.boundingBox().center(),
-            })
-            font_geo = hou.Geometry()
-            font_verb.execute(font_geo, [])
-            primitive_verb.execute(font_geo, [font_geo,])
-            new_geo.merge(font_geo)
         Cd_atr = new_geo.addAttrib(hou.attribType.Prim, "Cd", [1.0, 1.0, 1.0], create_local_variable=False)
         nprims = len(new_geo.iterPrims())
         flood_colors = list(itertools.chain(list(collider["collider_color#"])*nprims))

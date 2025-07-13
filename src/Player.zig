@@ -2,6 +2,7 @@ const enable_debug = false;
 const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
 var global_playdate_ptr: ?*const pdapi.PlaydateAPI = null;
+pub var global_gamestate_ptr: ?*GlobalState = null;
 
 const Player = @This();
 
@@ -77,8 +78,37 @@ fn playerMovement(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
 
 fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(.C) pdapi.SpriteCollisionResponseType {
     _ = sprite;
-    _ = other;
-    //const playdate = global_playdate_ptr orelse return .CollisionTypeFreeze;
+    const playdate = global_playdate_ptr orelse return .CollisionTypeFreeze;
+    var game_state = global_gamestate_ptr orelse return .CollisionTypeFreeze;
+    const tag = playdate.sprite.getTag(other);
+    if (tag == 255) return .CollisionTypeFreeze;
+  
+    if (tag >= game_state.map.levels.len) return .CollisionTypeFreeze;
+     
+    var x: f32 = 0; 
+    var y: f32 = 0; 
+    playdate.sprite.getPosition(other, &x, &y);
+    var switch_type = GlobalState.SwitchType.none;
+    if (x < 0.0 and y == 0.0 ) {
+        switch_type = .left_to_right;
+    } else if (x > 400.0 and y == 0.0) {
+        switch_type = .right_to_left;
+    } else if (x == 0.0 and y < 0.0 ) {
+        switch_type = .top_to_bottom;
+    } else if (x == 0.0 and y > 240.0 ) {
+        switch_type = .bottom_to_top;
+    } else {
+        return .CollisionTypeFreeze;
+    }
+        
+    game_state.level_switch = .{
+        .from = game_state.map.levels[game_state.current_level],
+        .to = game_state.map.levels[tag],
+        .stype = switch_type,
+        .tick = 0,
+    };
+    game_state.current_level = tag;
+    
     return .CollisionTypeFreeze;
 }
 
@@ -140,4 +170,4 @@ const pdapi = @import("playdate_api_definitions.zig");
 
 const BitmapLib = @import("BitmapLib.zig");
 const base_types = @import("base_types.zig");
-const Position = base_types.Position;
+const GlobalState = @import("GlobalState.zig");

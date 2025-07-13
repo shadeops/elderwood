@@ -96,7 +96,6 @@ const ColliderPlacement = struct {
     pos: Position = .{},
     resx: c_int = 0,
     resy: c_int = 0,
-    tag: u8 = 0,
     ctype: ColliderType = .blocker,
 };
 
@@ -208,10 +207,6 @@ pub const LevelParser = struct {
                         c.resx = @intCast(value.data.intval);
                     } else if (std.mem.eql(u8, "resy", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
                         c.resy = @intCast(value.data.intval);
-                    } else if (std.mem.eql(u8, "tag", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
-                        c.tag = @intCast(value.data.intval);
-                    } else if (std.mem.eql(u8, "ctype", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
-                        c.ctype = if (value.data.intval == 1) .blocker else .level_switch;
                     }
                 },
                 .none => return,
@@ -338,7 +333,6 @@ pub const LevelParser = struct {
             .height = @floatFromInt(collider.resy),
         });
         pd.sprite.setVisible(sprite, 0);
-        pd.sprite.setTag(sprite, collider.tag);
         self.added_colliders += 1;
         self.level.colliders[self.added_colliders - 1] = sprite;
     }
