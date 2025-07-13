@@ -1,0 +1,97 @@
+{
+ ".level_name.": "forest_dead_end",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 4
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       270,
+       6
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       277,
+       100
+      ],
+      "depth": 1,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       184,
+       101
+      ],
+      "depth": 2,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       191,
+       6
+      ],
+      "depth": 3,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 2
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 40,
+      "resy": 80,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       170
+      ],
+      "resx": 40,
+      "resy": 70,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

@@ -1,0 +1,139 @@
+{
+ ".level_name.": "forest_entrance",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 7
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       19,
+       -16
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       238,
+       -5
+      ],
+      "depth": 123,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 49,
+      "position": [
+       5,
+       98
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 44,
+      "position": [
+       159,
+       -18
+      ],
+      "depth": 1,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 51,
+      "position": [
+       263,
+       96
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 44,
+      "position": [
+       184,
+       109
+      ],
+      "depth": 237,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 50,
+      "position": [
+       135,
+       95
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 2
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 400,
+      "resy": 110,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       210
+      ],
+      "resx": 400,
+      "resy": 30,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

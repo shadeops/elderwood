@@ -1,0 +1,69 @@
+{
+ ".level_name.": "temple_entrance",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 2
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       276,
+       -4
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       341,
+       206
+      ],
+      "depth": 1,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 2
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 400,
+      "resy": 60,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       220
+      ],
+      "resx": 400,
+      "resy": 20,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

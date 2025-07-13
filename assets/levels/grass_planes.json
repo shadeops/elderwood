@@ -1,0 +1,1144 @@
+{
+ ".level_name.": "grass_planes",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 78
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       -3,
+       -8
+      ],
+      "depth": 120,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       0,
+       0
+      ],
+      "depth": 1,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 4,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       188,
+       -20
+      ],
+      "depth": 108,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 23,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       53,
+       -19
+      ],
+      "depth": 109,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       102,
+       -12
+      ],
+      "depth": 116,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 44,
+      "position": [
+       12,
+       -22
+      ],
+      "depth": 106,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       79,
+       167
+      ],
+      "depth": 191,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 16,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       229,
+       163
+      ],
+      "depth": 187,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 2,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       23,
+       167
+      ],
+      "depth": 191,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 18,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       251,
+       167
+      ],
+      "depth": 191,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 3,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       368,
+       185
+      ],
+      "depth": 209,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 19,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       308,
+       168
+      ],
+      "depth": 192,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 16,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       92,
+       181
+      ],
+      "depth": 205,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 10,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       54,
+       215
+      ],
+      "depth": 207,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 16,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       135,
+       187
+      ],
+      "depth": 211,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 19,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       47,
+       189
+      ],
+      "depth": 213,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 11,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       201,
+       190
+      ],
+      "depth": 214,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 14,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       254,
+       193
+      ],
+      "depth": 217,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 4,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       230,
+       190
+      ],
+      "depth": 214,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 10,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       25,
+       212
+      ],
+      "depth": 215,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 22,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 43,
+      "position": [
+       -45,
+       -23
+      ],
+      "depth": 105,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       271,
+       195
+      ],
+      "depth": 219,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 11,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 46,
+      "position": [
+       50,
+       140
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       105,
+       196
+      ],
+      "depth": 220,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 15,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       342,
+       196
+      ],
+      "depth": 220,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 16,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       297,
+       200
+      ],
+      "depth": 224,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 4,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       180,
+       200
+      ],
+      "depth": 224,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 22,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       156,
+       202
+      ],
+      "depth": 226,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       209,
+       202
+      ],
+      "depth": 226,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 2,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       42,
+       204
+      ],
+      "depth": 228,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 4,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       127,
+       206
+      ],
+      "depth": 230,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 4,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       361,
+       209
+      ],
+      "depth": 233,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 8,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       72,
+       209
+      ],
+      "depth": 233,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 1,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       218,
+       212
+      ],
+      "depth": 236,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 13,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 43,
+      "position": [
+       299,
+       -23
+      ],
+      "depth": 217,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       243,
+       -19
+      ],
+      "depth": 109,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 44,
+      "position": [
+       205,
+       -37
+      ],
+      "depth": 91,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 43,
+      "position": [
+       189,
+       -18
+      ],
+      "depth": 110,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       115,
+       89
+      ],
+      "depth": 113,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 17,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       14,
+       88
+      ],
+      "depth": 112,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 14,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       57,
+       92
+      ],
+      "depth": 113,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 10,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       84,
+       92
+      ],
+      "depth": 114,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 12,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       171,
+       92
+      ],
+      "depth": 115,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 20,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       202,
+       90
+      ],
+      "depth": 116,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 9,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       251,
+       90
+      ],
+      "depth": 117,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 10,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       286,
+       90
+      ],
+      "depth": 118,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       369,
+       87
+      ],
+      "depth": 119,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 22,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 47,
+      "position": [
+       132,
+       102
+      ],
+      "depth": 118,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       226,
+       90
+      ],
+      "depth": 122,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       348,
+       106
+      ],
+      "depth": 4,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       317,
+       192
+      ],
+      "depth": 125,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       172,
+       172
+      ],
+      "depth": 144,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       320,
+       215
+      ],
+      "depth": 231,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       266,
+       218
+      ],
+      "depth": 234,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       164,
+       216
+      ],
+      "depth": 240,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 12,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       196,
+       72
+      ],
+      "depth": 96,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 18,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       206,
+       51
+      ],
+      "depth": 75,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 14,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       322,
+       48
+      ],
+      "depth": 72,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 16,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       338,
+       81
+      ],
+      "depth": 105,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 11,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       310,
+       88
+      ],
+      "depth": 112,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 12,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 46,
+      "position": [
+       11,
+       217
+      ],
+      "depth": 233,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 47,
+      "position": [
+       102,
+       214
+      ],
+      "depth": 230,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 47,
+      "position": [
+       240,
+       211
+      ],
+      "depth": 227,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 47,
+      "position": [
+       143,
+       221
+      ],
+      "depth": 237,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       195,
+       217
+      ],
+      "depth": 233,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       379,
+       212
+      ],
+      "depth": 228,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 48,
+      "position": [
+       336,
+       224
+      ],
+      "depth": 240,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       216,
+       103
+      ],
+      "depth": 146,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 16,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       172,
+       134
+      ],
+      "depth": 158,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 15,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       288,
+       216
+      ],
+      "depth": 194,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 13,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       374,
+       108
+      ],
+      "depth": 132,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 1,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 44,
+      "position": [
+       278,
+       -43
+      ],
+      "depth": 85,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 45,
+      "position": [
+       151,
+       -77
+      ],
+      "depth": 51,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       11,
+       100
+      ],
+      "depth": 124,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 9,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 51,
+      "position": [
+       269,
+       94
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 50,
+      "position": [
+       137,
+       94
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 50,
+      "position": [
+       9,
+       94
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 47,
+      "position": [
+       211,
+       124
+      ],
+      "depth": 0,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": false
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 3
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 400,
+      "resy": 110,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       210
+      ],
+      "resx": 400,
+      "resy": 30,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       110
+      ],
+      "resx": 10,
+      "resy": 100,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

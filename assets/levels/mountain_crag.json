@@ -1,0 +1,119 @@
+{
+ ".level_name.": "mountain_crag",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 4
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 0,
+      "position": [
+       308,
+       104
+      ],
+      "depth": 0,
+      "animated": true,
+      "duration": 18,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       4,
+       -11
+      ],
+      "depth": 1,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       248,
+       2
+      ],
+      "depth": 2,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 18,
+      "position": [
+       143,
+       -12
+      ],
+      "depth": 3,
+      "animated": false,
+      "duration": 1,
+      "frame_offset": 0,
+      "flip": true
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 4
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 400,
+      "resy": 70,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       70
+      ],
+      "resx": 10,
+      "resy": 170,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       370,
+       70
+      ],
+      "resx": 30,
+      "resy": 150,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       60,
+       220
+      ],
+      "resx": 340,
+      "resy": 20,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

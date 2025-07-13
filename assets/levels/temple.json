@@ -1,0 +1,195 @@
+{
+ ".level_name.": "temple",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 11
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       37,
+       61
+      ],
+      "depth": 0,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       90,
+       63
+      ],
+      "depth": 1,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       142,
+       54
+      ],
+      "depth": 2,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       227,
+       55
+      ],
+      "depth": 3,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       311,
+       50
+      ],
+      "depth": 4,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       45,
+       184
+      ],
+      "depth": 5,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       108,
+       183
+      ],
+      "depth": 6,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       158,
+       180
+      ],
+      "depth": 7,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       204,
+       178
+      ],
+      "depth": 8,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       281,
+       182
+      ],
+      "depth": 9,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       360,
+       164
+      ],
+      "depth": 10,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 2
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 400,
+      "resy": 60,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       220
+      ],
+      "resx": 400,
+      "resy": 20,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

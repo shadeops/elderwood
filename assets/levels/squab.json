@@ -1,0 +1,116 @@
+{
+ ".level_name.": "squab",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 3
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 0,
+      "position": [
+       342,
+       84
+      ],
+      "depth": 0,
+      "animated": true,
+      "duration": 18,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 0,
+      "position": [
+       311,
+       83
+      ],
+      "depth": 1,
+      "animated": true,
+      "duration": 18,
+      "frame_offset": 0,
+      "flip": true
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 0,
+      "position": [
+       277,
+       82
+      ],
+      "depth": 2,
+      "animated": true,
+      "duration": 18,
+      "frame_offset": 0,
+      "flip": true
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 5
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 70,
+      "resy": 60,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       220
+      ],
+      "resx": 70,
+      "resy": 20,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       380,
+       0
+      ],
+      "resx": 20,
+      "resy": 240,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       70,
+       0
+      ],
+      "resx": 310,
+      "resy": 30,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       70,
+       220
+      ],
+      "resx": 310,
+      "resy": 20,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

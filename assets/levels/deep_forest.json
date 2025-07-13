@@ -1,0 +1,147 @@
+{
+ ".level_name.": "deep_forest",
+ "level_data": {
+  "sprites": [
+   {
+    ".total_sprites.": 6
+   },
+   [
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       40,
+       40
+      ],
+      "depth": 0,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       75,
+       40
+      ],
+      "depth": 1,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       147,
+       45
+      ],
+      "depth": 2,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       217,
+       50
+      ],
+      "depth": 3,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       259,
+       46
+      ],
+      "depth": 4,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    },
+    {
+     "sprite": {
+      "bitmap_id": 19,
+      "position": [
+       302,
+       46
+      ],
+      "depth": 5,
+      "animated": true,
+      "duration": 24,
+      "frame_offset": 0,
+      "flip": false
+     }
+    }
+   ]
+  ],
+  "colliders": [
+   {
+    ".total_colliders.": 4
+   },
+   [
+    {
+     "collider": {
+      "position": [
+       0,
+       0
+      ],
+      "resx": 250,
+      "resy": 110,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       350,
+       0
+      ],
+      "resx": 50,
+      "resy": 80,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       0,
+       200
+      ],
+      "resx": 170,
+      "resy": 40,
+      "ctype": 1
+     }
+    },
+    {
+     "collider": {
+      "position": [
+       290,
+       170
+      ],
+      "resx": 110,
+      "resy": 70,
+      "ctype": 1
+     }
+    }
+   ]
+  ]
+ }
+}

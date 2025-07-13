@@ -1,0 +1,103 @@
+{
+ "map": {
+  ".collision_pad.": 4,
+  ".starting_level.": 0,
+  ".player_pos_x.": 50,
+  ".player_pos_y.": 120,
+  "levels": [
+   {
+    ".total_levels.": 10
+   },
+   {
+    "level": {
+     "name": "grass_planes",
+     "east": 1,
+     "north": null,
+     "west": null,
+     "south": null
+    }
+   },
+   {
+    "level": {
+     "name": "forest_entrance",
+     "east": 2,
+     "north": null,
+     "west": 0,
+     "south": null
+    }
+   },
+   {
+    "level": {
+     "name": "deep_forest",
+     "east": 4,
+     "north": 5,
+     "west": 1,
+     "south": 3
+    }
+   },
+   {
+    "level": {
+     "name": "flips_pool",
+     "east": null,
+     "north": 2,
+     "west": null,
+     "south": null
+    }
+   },
+   {
+    "level": {
+     "name": "forest_dead_end",
+     "east": null,
+     "north": null,
+     "west": 2,
+     "south": null
+    }
+   },
+   {
+    "level": {
+     "name": "temple_suburbs",
+     "east": 7,
+     "north": 6,
+     "west": null,
+     "south": 2
+    }
+   },
+   {
+    "level": {
+     "name": "mountain_crag",
+     "east": null,
+     "north": null,
+     "west": null,
+     "south": 5
+    }
+   },
+   {
+    "level": {
+     "name": "temple_entrance",
+     "east": 8,
+     "north": null,
+     "west": 5,
+     "south": null
+    }
+   },
+   {
+    "level": {
+     "name": "temple",
+     "east": 9,
+     "north": null,
+     "west": 7,
+     "south": null
+    }
+   },
+   {
+    "level": {
+     "name": "squab",
+     "east": null,
+     "north": null,
+     "west": 8,
+     "south": null
+    }
+   }
+  ]
+ }
+}
