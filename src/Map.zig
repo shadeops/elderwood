@@ -65,15 +65,15 @@ pub fn buildLevelSwitches(self: *Map) void {
     playdate.sprite.setCenter(north, 0, 0);
     playdate.sprite.setSize(north, 400.0, 4.0);
     playdate.sprite.setCollisionsEnabled(north, 1);
-    playdate.sprite.setCollideRect(north, .{ .x = 0.0, .y = 0.0, .width = 400.0, .height = 4.0});
+    playdate.sprite.setCollideRect(north, .{ .x = 0.0, .y = 0.0, .width = 400.0, .height = 4.0 });
     playdate.sprite.setVisible(north, 0);
     const south = playdate.sprite.copy(north) orelse unreachable;
     playdate.sprite.moveTo(north, 0.0, -@as(f32, @floatFromInt(self.collision_pad)));
-    playdate.sprite.moveTo(south, 0.0, @as(f32,240.0)+@as(f32,@floatFromInt(self.collision_pad)));
+    playdate.sprite.moveTo(south, 0.0, @as(f32, 240.0) + @as(f32, @floatFromInt(self.collision_pad)));
 
-    self.colliders[@intFromEnum(CardinalDirection.north)] = north;   
-    self.colliders[@intFromEnum(CardinalDirection.south)] = south;   
- 
+    self.colliders[@intFromEnum(CardinalDirection.north)] = north;
+    self.colliders[@intFromEnum(CardinalDirection.south)] = south;
+
     const east = playdate.sprite.newSprite() orelse unreachable;
     playdate.sprite.setImage(east, east_west_bitmap, .BitmapUnflipped);
     playdate.sprite.setCenter(east, 0, 0);
@@ -82,22 +82,21 @@ pub fn buildLevelSwitches(self: *Map) void {
     playdate.sprite.setCollideRect(east, .{ .x = 0.0, .y = 0.0, .height = 240.0, .width = 4.0 });
     playdate.sprite.setVisible(east, 0);
     const west = playdate.sprite.copy(east) orelse unreachable;
-    playdate.sprite.moveTo(east, @as(f32,400.0)+@as(f32,@floatFromInt(self.collision_pad)), 0.0);
-    playdate.sprite.moveTo(west, -@as(f32,@floatFromInt(self.collision_pad)), 0.0);
-    
+    playdate.sprite.moveTo(east, @as(f32, 400.0) + @as(f32, @floatFromInt(self.collision_pad)), 0.0);
+    playdate.sprite.moveTo(west, -@as(f32, @floatFromInt(self.collision_pad)), 0.0);
+
     self.colliders[@intFromEnum(CardinalDirection.east)] = east;
     self.colliders[@intFromEnum(CardinalDirection.west)] = west;
 
     for (&self.colliders) |collider| {
         playdate.sprite.addSprite(collider);
     }
-
 }
 
 pub fn setLevelTags(self: *Map, current_level: usize) void {
     if (current_level >= self.level_switches.len) return;
     const lswitch = self.level_switches[current_level];
-    
+
     const north = self.colliders[@intFromEnum(CardinalDirection.north)];
     const south = self.colliders[@intFromEnum(CardinalDirection.south)];
     const east = self.colliders[@intFromEnum(CardinalDirection.east)];
@@ -107,7 +106,6 @@ pub fn setLevelTags(self: *Map, current_level: usize) void {
     self.playdate.sprite.setTag(east, lswitch.east);
     self.playdate.sprite.setTag(west, lswitch.west);
 }
-
 
 pub const MapParser = struct {
     added_levels: usize = 0,
@@ -130,7 +128,7 @@ pub const MapParser = struct {
         if (debug) pd.system.logToConsole("[%s] willDecodeSublist: %s, [%d]", decoder.?.path, name, @intFromEnum(jtype));
 
         const key_name = std.mem.sliceTo(name orelse return, 0);
-        
+
         if (jtype == .JSONTable and std.mem.eql(u8, "level", key_name)) {
             jstate.current_level_switch = &map.level_switches[jstate.added_levels];
         }
@@ -158,7 +156,7 @@ pub const MapParser = struct {
                 @intCast(@sizeOf(*Level) * (value.data.intval)),
             ) orelse unreachable));
             map.levels = levels_ptr[0..@intCast(value.data.intval)];
-            
+
             const level_switch_ptr: [*]LevelSwitch = @ptrCast(@alignCast(pd.system.realloc(
                 null,
                 @intCast(@sizeOf(*LevelSwitch) * (value.data.intval)),
@@ -173,9 +171,8 @@ pub const MapParser = struct {
             const name = std.mem.sliceTo(value.data.stringval, 0);
             const level = Level.init(pd, jstate.bitlib);
             var level_parser = Level.LevelParser{ .level = level };
-            level_parser.buildLevel(.{.file = name});
+            level_parser.buildLevel(.{ .file = name });
             map.levels[jstate.added_levels] = level;
-
         } else if (cls != null and std.mem.eql(u8, "east", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
             cls.?.east = @intCast(value.data.intval);
         } else if (cls != null and std.mem.eql(u8, "west", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
@@ -242,7 +239,7 @@ pub const MapParser = struct {
                     return;
                 };
                 defer map_reader.deinit();
-                 _ = self.map.playdate.json.decode(&json_decoder, map_reader.json_reader, null);
+                _ = self.map.playdate.json.decode(&json_decoder, map_reader.json_reader, null);
             },
         }
 

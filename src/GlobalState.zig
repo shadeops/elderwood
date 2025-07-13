@@ -1,8 +1,7 @@
-
 pub const SwitchType = enum {
-// Denotes the direction the screen wipes
-// ie, the player exits right, and the screen slides
-// from right to the left replacing the current level.
+    // Denotes the direction the screen wipes
+    // ie, the player exits right, and the screen slides
+    // from right to the left replacing the current level.
     none,
     right_to_left,
     left_to_right,

@@ -192,7 +192,7 @@ pub const BitmapLibParser = struct {
             .returnString = 0,
             .path = null,
         };
-        
+
         switch (library_src) {
             .string => |s| _ = self.bitlib.playdate.json.decodeString(&json_decoder, s, null),
             .file => |f| {
@@ -201,12 +201,11 @@ pub const BitmapLibParser = struct {
                     return;
                 };
                 defer library_reader.deinit();
-                 _ = self.bitlib.playdate.json.decode(&json_decoder, library_reader.json_reader, null);
+                _ = self.bitlib.playdate.json.decode(&json_decoder, library_reader.json_reader, null);
             },
         }
     }
 };
-
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -216,4 +215,3 @@ const base_types = @import("base_types.zig");
 
 const JsonSource = base_types.JsonSource;
 const JsonReader = base_types.JsonReader;
-

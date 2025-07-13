@@ -10,20 +10,15 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
 
             const bitmap_lib = BitmapLib.init(playdate);
             var bitmap_lib_parser = BitmapLib.BitmapLibParser{ .bitlib = bitmap_lib };
-            bitmap_lib_parser.buildLibrary(.{.file = "library"});
+            bitmap_lib_parser.buildLibrary(.{ .file = "library" });
 
-            //var level = Level.init(playdate, bitmap_lib);
-            //var level_parser = Level.LevelParser{ .level = level };
-            //level_parser.buildLevel(.{.file = "grass_planes"});
-            //level.populate();
-            
             const player = Player.init(playdate, bitmap_lib, 0, 18) catch unreachable;
             playdate.sprite.addSprite(player.sprite);
 
             const map = Map.init(playdate);
             var map_parser = Map.MapParser{ .map = map, .bitlib = bitmap_lib };
-            map_parser.buildMap(.{.file = "map"});
-            const current_level = 2;//map.starting_level;
+            map_parser.buildMap(.{ .file = "map" });
+            const current_level = map.starting_level;
             map.buildLevelSwitches();
             map.setLevelTags(current_level);
 
@@ -31,18 +26,6 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
 
             var level = map.levels[current_level];
             level.populate();
-            
-            //const bitmap = playdate.graphics.newBitmap(200, 50, @intFromEnum(pdapi.LCDSolidColor.ColorBlack));
-            //const sprite = playdate.sprite.newSprite();
-            //playdate.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
-            //playdate.sprite.setCenter(sprite, 0, 0);
-            //playdate.sprite.setSize(sprite, 200, 50);
-            //playdate.sprite.moveTo(sprite, 50, 100);
-            //playdate.sprite.setCollisionsEnabled(sprite, 1);
-            //playdate.sprite.setCollideRect(sprite, .{ .x = 0.0, .y = 0.0, .width = 200.0, .height = 50.0 });
-            //playdate.sprite.setVisible(sprite, 0);
-            //playdate.sprite.setTag(sprite, 5);
-            //playdate.sprite.addSprite(sprite);
 
             const global_state: *GlobalState =
                 @ptrCast(@alignCast(
@@ -75,25 +58,30 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     playdate.system.getButtonState(&current_buttons, &pushed_buttons, &released_buttons);
 
     if (global_state.level_switch.stype != .none) {
-
-        var offsets = [_]f32{0.0}**2;
+        var offsets = [_]f32{0.0} ** 2;
         const ls = &global_state.level_switch;
-        const to = ls.to orelse { ls.* = .{}; return 1; };
-        const from = ls.from orelse { ls.* = .{}; return 1; };
+        const to = ls.to orelse {
+            ls.* = .{};
+            return 1;
+        };
+        const from = ls.from orelse {
+            ls.* = .{};
+            return 1;
+        };
 
         const tick_halt: u32 = switch (global_state.level_switch.stype) {
             .right_to_left, .left_to_right => 400,
             .top_to_bottom, .bottom_to_top => 240,
             else => unreachable,
         };
-        if (ls.tick == @as(u32,0) ) {
+        if (ls.tick == @as(u32, 0)) {
             defer ls.tick += 4;
             // offset from default pos to one screen away
-             offsets = switch (global_state.level_switch.stype) {
-                .right_to_left => .{400.0, 0.0},
-                .left_to_right => .{-400.0, 0.0},
-                .top_to_bottom => .{0.0, -240.0},
-                .bottom_to_top => .{0.0, 240.0},
+            offsets = switch (global_state.level_switch.stype) {
+                .right_to_left => .{ 400.0, 0.0 },
+                .left_to_right => .{ -400.0, 0.0 },
+                .top_to_bottom => .{ 0.0, -240.0 },
+                .bottom_to_top => .{ 0.0, 240.0 },
                 else => unreachable,
             };
             for (to.sprites) |sprite| {
@@ -103,10 +91,10 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
         } else if (ls.tick > tick_halt) {
             // reset these sprites back to their original position
             offsets = switch (global_state.level_switch.stype) {
-                .right_to_left => .{400.0, 0.0},
-                .left_to_right => .{-400.0, 0.0},
-                .top_to_bottom => .{0.0, -240.0},
-                .bottom_to_top => .{0.0, 240.0},
+                .right_to_left => .{ 400.0, 0.0 },
+                .left_to_right => .{ -400.0, 0.0 },
+                .top_to_bottom => .{ 0.0, -240.0 },
+                .bottom_to_top => .{ 0.0, 240.0 },
                 else => unreachable,
             };
             ls.tick = 0;
@@ -121,10 +109,10 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
         } else {
             defer ls.tick += 4;
             offsets = switch (global_state.level_switch.stype) {
-                .right_to_left => .{-4.0, 0.0},
-                .left_to_right => .{4.0, 0.0},
-                .top_to_bottom => .{0.0, 4.0},
-                .bottom_to_top => .{0.0, -4.0},
+                .right_to_left => .{ -4.0, 0.0 },
+                .left_to_right => .{ 4.0, 0.0 },
+                .top_to_bottom => .{ 0.0, 4.0 },
+                .bottom_to_top => .{ 0.0, -4.0 },
                 else => unreachable,
             };
             for (to.sprites) |sprite| {
@@ -165,7 +153,6 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     return 1;
 }
 
-
 const std = @import("std");
 const builtin = @import("builtin");
 const pdapi = @import("playdate_api_definitions.zig");
@@ -176,4 +163,3 @@ const Level = @import("Level.zig");
 const Map = @import("Map.zig");
 const Player = @import("Player.zig");
 const GlobalState = @import("GlobalState.zig");
-

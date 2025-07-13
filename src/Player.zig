@@ -61,7 +61,7 @@ fn playerMovement(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
         _ = playdate.system.realloc(hitinfo, 0);
     }
 
-    if (num_hits > 0 ) {
+    if (num_hits > 0) {
         for (hitinfo[0..@intCast(num_hits)]) |hit| {
             if (hit.overlaps != 0) {
                 playdate.system.logToConsole("ERROR: Sprite stuck");
@@ -82,25 +82,25 @@ fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(
     var game_state = global_gamestate_ptr orelse return .CollisionTypeFreeze;
     const tag = playdate.sprite.getTag(other);
     if (tag == 255) return .CollisionTypeFreeze;
-  
+
     if (tag >= game_state.map.levels.len) return .CollisionTypeFreeze;
-     
-    var x: f32 = 0; 
-    var y: f32 = 0; 
+
+    var x: f32 = 0;
+    var y: f32 = 0;
     playdate.sprite.getPosition(other, &x, &y);
     var switch_type = GlobalState.SwitchType.none;
-    if (x < 0.0 and y == 0.0 ) {
+    if (x < 0.0 and y == 0.0) {
         switch_type = .left_to_right;
     } else if (x > 400.0 and y == 0.0) {
         switch_type = .right_to_left;
-    } else if (x == 0.0 and y < 0.0 ) {
+    } else if (x == 0.0 and y < 0.0) {
         switch_type = .top_to_bottom;
-    } else if (x == 0.0 and y > 240.0 ) {
+    } else if (x == 0.0 and y > 240.0) {
         switch_type = .bottom_to_top;
     } else {
         return .CollisionTypeFreeze;
     }
-        
+
     game_state.level_switch = .{
         .from = game_state.map.levels[game_state.current_level],
         .to = game_state.map.levels[tag],
@@ -108,7 +108,7 @@ fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(
         .tick = 0,
     };
     game_state.current_level = tag;
-    
+
     return .CollisionTypeFreeze;
 }
 

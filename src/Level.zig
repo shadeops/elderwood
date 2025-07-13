@@ -15,7 +15,7 @@ sprites: []*pdapi.LCDSprite = &.{},
 // TODO: Given that we have to have a global playdate pointer, we can probably remove this
 playdate: *const pdapi.PlaydateAPI,
 bitlib: *const BitmapLib,
-name: [32:0]u8 = [_:0]u8{0}**32,
+name: [32:0]u8 = [_:0]u8{0} ** 32,
 
 pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: *const BitmapLib) *Level {
     if (global_playdate_ptr == null) {
@@ -336,7 +336,7 @@ pub const LevelParser = struct {
         self.added_colliders += 1;
         self.level.colliders[self.added_colliders - 1] = sprite;
     }
-    
+
     pub fn buildLevel(self: *LevelParser, level_src: LevelSource) void {
         var json_decoder = pdapi.JSONDecoder{
             .decodeError = decodeError,
@@ -359,7 +359,7 @@ pub const LevelParser = struct {
                     return;
                 };
                 defer level_reader.deinit();
-                 _ = self.level.playdate.json.decode(&json_decoder, level_reader.json_reader, null);
+                _ = self.level.playdate.json.decode(&json_decoder, level_reader.json_reader, null);
             },
         }
 
@@ -369,7 +369,6 @@ pub const LevelParser = struct {
             self.level.playdate.system.logToConsole("ERROR: Not enough colliders added");
         if (debug) self.level.playdate.system.logToConsole("Loaded %s", &self.level.name);
     }
-    
 };
 
 const std = @import("std");
@@ -382,4 +381,3 @@ const base_types = @import("base_types.zig");
 const Position = base_types.Position;
 const LevelSource = base_types.JsonSource;
 const LevelReader = base_types.JsonReader;
-
