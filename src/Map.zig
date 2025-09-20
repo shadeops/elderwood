@@ -241,6 +241,7 @@ pub const MapParser = struct {
                 defer map_reader.deinit();
                 _ = self.map.playdate.json.decode(&json_decoder, map_reader.json_reader, null);
             },
+            .http => unreachable,
         }
 
         if (self.added_levels != self.map.levels.len)

@@ -4,7 +4,8 @@ import json
 # TODO the naming is all over the map (hurrr) and should stick
 # to one convention
 
-dir_id_to_name = ["west_of","south_of","east_of","north_of"]
+dir_id_to_name = ["west_of", "south_of", "east_of", "north_of"]
+
 
 class ConnectsTo:
     def __init__(self):
@@ -12,58 +13,57 @@ class ConnectsTo:
         self.north = None
         self.west = None
         self.south = None
+
     def as_dict(self):
         return {
-            "east" : self.east,
-            "north" : self.north,
-            "west" : self.west,
-            "south" : self.south,
+            "east": self.east,
+            "north": self.north,
+            "west": self.west,
+            "south": self.south,
         }
+
     def a_to_b_direction(self, direction, where):
-        if direction == 0: # "west_of"
+        if direction == 0:  # "west_of"
             if self.east is not None:
                 raise ValueError("east already set")
             self.east = where
-        elif direction == 2: # "east_of":
+        elif direction == 2:  # "east_of":
             if self.west is not None:
                 raise ValueError("west already set")
             self.west = where
-        elif direction == 3: #"above"
+        elif direction == 3:  # "above"
             if self.south is not None:
                 raise ValueError("south already set")
             self.south = where
-        elif direction == 1: #"south_of"
+        elif direction == 1:  # "south_of"
             if self.north is not None:
                 raise ValueError("north already set")
             self.north = where
 
     def b_to_a_direction(self, direction, where):
-        if direction == 0: # "west_of"
+        if direction == 0:  # "west_of"
             if self.west is not None:
                 raise ValueError("west already set")
             self.west = where
-        elif direction == 2: # "east_of"
+        elif direction == 2:  # "east_of"
             if self.east is not None:
                 raise ValueError("east already set")
             self.east = where
-        elif direction == 3: # "above"
+        elif direction == 3:  # "above"
             if self.north is not None:
                 raise ValueError("north already set")
             self.north = where
-        elif direction == 1: # "south_of"
+        elif direction == 1:  # "south_of"
             if self.south is not None:
                 raise ValueError("south already set")
             self.south = where
 
     def __str__(self):
-        return (f"{self.east}, "
-                f"{self.north}, "
-                f"{self.west}, "
-                f"{self.south}"
-            )
+        return f"{self.east}, " f"{self.north}, " f"{self.west}, " f"{self.south}"
 
     def __repr__(self):
         return self.__str__()
+
 
 # {"map" : {
 #    ".collision_pad.": int,
@@ -88,24 +88,26 @@ def export_map(node):
 
     level_to_id = {}
     level_names = []
-    for i,n in enumerate(node.inputs()):
+    for i, n in enumerate(node.inputs()):
         level_to_id[n.name()] = i
         level_names.append(n.name())
 
     # TODO rename this part from levels to connections
     levels = []
-    export_map = {"map" : {
-        ".collision_pad." : node.parm("collision_padding").evalAsInt(),
-        ".starting_level." : node.parm("starting_level").evalAsInt(),
-        ".player_pos_x." : node.parm("player_start_posx").evalAsInt(),
-        ".player_pos_y." : node.parm("player_start_posy").evalAsInt(),
-        "levels" : levels,
-    }}
+    export_map = {
+        "map": {
+            ".collision_pad.": node.parm("collision_padding").evalAsInt(),
+            ".starting_level.": node.parm("starting_level").evalAsInt(),
+            ".player_pos_x.": node.parm("player_start_posx").evalAsInt(),
+            ".player_pos_y.": node.parm("player_start_posy").evalAsInt(),
+            "levels": levels,
+        }
+    }
 
     edges = node.parm("levels").evalAsInt()
     spawned_levels = set()
     connections = {}
-    for edge in range(1,edges+1):
+    for edge in range(1, edges + 1):
         a = node.parm(f"level_a{edge}").evalAsString()
         b = node.parm(f"level_b{edge}").evalAsString()
         dir_id = node.parm(f"placement{edge}").evalAsInt()
@@ -119,17 +121,20 @@ def export_map(node):
         connections[a].a_to_b_direction(dir_id, level_to_id[b])
         connections[b].b_to_a_direction(dir_id, level_to_id[a])
 
-    levels.append({".total_levels." : len(spawned_levels)})
+    levels.append({".total_levels.": len(spawned_levels)})
     # TODO For now, we'll just create levels even if they don't
     # have connections. Partially for debugging and to avoid
     # having to rebalance offset ids. But this show be fixed
     for level_id, level_name in enumerate(level_names):
-        level = {"level" : {
-                    "name" : level_name,
-                }}
+        level = {
+            "level": {
+                "name": level_name,
+            }
+        }
         level["level"].update(connections.get(level_name, ConnectsTo()).as_dict())
         levels.append(level)
     return export_map
+
 
 def layout_map(node):
     node = hou.pwd()
@@ -139,7 +144,7 @@ def layout_map(node):
     geos = {}
     level_to_id = {}
     level_ids = []
-    for i,n in enumerate(hda.inputs()):
+    for i, n in enumerate(hda.inputs()):
         geos[n.name()] = n.geometry().freeze()
         level_to_id[n.name()] = i
         level_ids.append(n)
@@ -149,9 +154,15 @@ def layout_map(node):
     skel_geo = hou.Geometry()
 
     level_pts = {}
-    name_atr = skel_geo.addAttrib(hou.attribType.Point, "name", "", create_local_variable=False)
-    dir_atr = skel_geo.addAttrib(hou.attribType.Prim, "dir", "", create_local_variable=False)
-    level_id_atr = skel_geo.addAttrib(hou.attribType.Point, "level_id", -1, create_local_variable=False)
+    name_atr = skel_geo.addAttrib(
+        hou.attribType.Point, "name", "", create_local_variable=False
+    )
+    dir_atr = skel_geo.addAttrib(
+        hou.attribType.Prim, "dir", "", create_local_variable=False
+    )
+    level_id_atr = skel_geo.addAttrib(
+        hou.attribType.Point, "level_id", -1, create_local_variable=False
+    )
 
     ## Build Edges and Points
 
@@ -164,7 +175,7 @@ def layout_map(node):
 
         # reorder so preferring left of and south_of
         if direction in ("south_of", "east_of"):
-            a,b = b,a
+            a, b = b, a
             direction = "north_of" if direction == "south_of" else "west_of"
         edges.append([a, b, direction])
 
@@ -188,21 +199,23 @@ def layout_map(node):
         poly.addVertex(pt_b)
 
     space_x = 2 + hda.parm("padding").eval()
-    space_y = 240/400*space_x
+    space_y = 240 / 400 * space_x
 
-    check_queue = [[edges[0][0], hou.Vector3(0,0,0)],]
+    check_queue = [
+        [edges[0][0], hou.Vector3(0, 0, 0)],
+    ]
     checked = set()
 
     # Layout Points
 
     emergency_escape = 0
     while check_queue and emergency_escape < 1000:
-        emergency_escape+=1
+        emergency_escape += 1
 
         check, pos = check_queue.pop()
         checked.add(check)
         for edge in edges:
-            a,b,direction = edge
+            a, b, direction = edge
             if check == a:
                 if direction == "west_of":
                     d = hou.Vector3(space_x, 0, 0)
@@ -243,23 +256,23 @@ def layout_map(node):
         start_pos = start_pt.position()
         start_x = hda.parm("player_start_posx").evalAsInt()
         start_y = hda.parm("player_start_posy").evalAsInt()
-        start_x = start_x/400*2 - 1
-        start_y = 240/400 - start_y/400*2
+        start_x = start_x / 400 * 2 - 1
+        start_y = 240 / 400 - start_y / 400 * 2
 
         start_x += start_pos[0]
         start_y += start_pos[1]
 
         # TODO, we can't create hou.Quadrics from a hou.Geometry()?
         sphere_verb = hou.sopNodeTypeCategory().nodeVerb("sphere")
-        sphere_verb.setParms({
-            "type": 0,
-            "rad": [0.03, 0.03, 0.03],
-            "t" : [start_x, start_y, 0]
-        })
+        sphere_verb.setParms(
+            {"type": 0, "rad": [0.03, 0.03, 0.03], "t": [start_x, start_y, 0]}
+        )
         sphere_geo = hou.Geometry()
         sphere_verb.execute(sphere_geo, [])
-        cd_atr = sphere_geo.addAttrib(hou.attribType.Prim, "Cd", [1.,1.,1.], create_local_variable=False)
-        sphere_geo.prims()[0].setAttribValue(cd_atr, [0.,0.,1.])
+        cd_atr = sphere_geo.addAttrib(
+            hou.attribType.Prim, "Cd", [1.0, 1.0, 1.0], create_local_variable=False
+        )
+        sphere_geo.prims()[0].setAttribValue(cd_atr, [0.0, 0.0, 1.0])
         geo.merge(sphere_geo)
 
     if len(checked) < len(level_pts):
@@ -267,12 +280,15 @@ def layout_map(node):
         raise hou.NodeWarning(f"{', '.join(unconnected)} not connected")
 
 
-def export_callback(kwargs):
-    node = kwargs["node"]
+def as_json(node):
+    map_export = export_map(node)
+    return json.dumps(map_export, indent=1)
+
+
+def export_callback(node):
     path = node.parm("export_path").eval()
     if not path:
         return
     map_export = export_map(node)
     with open(path, "w") as json_f:
         json.dump(map_export, json_f, indent=1)
-

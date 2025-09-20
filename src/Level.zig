@@ -364,6 +364,7 @@ pub const LevelParser = struct {
                 defer level_reader.deinit();
                 _ = self.level.playdate.json.decode(&json_decoder, level_reader.json_reader, null);
             },
+            .http => unreachable,
         }
 
         if (self.added_sprites != self.level.sprites.len)

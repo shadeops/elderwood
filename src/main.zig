@@ -8,10 +8,74 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
         .EventInit => {
             panic_handler.init(playdate);
 
-            const bitmap_lib = BitmapLib.init(playdate);
-            var bitmap_lib_parser = BitmapLib.BitmapLibParser{ .bitlib = bitmap_lib };
-            bitmap_lib_parser.buildLibrary(.{ .file = "library" });
+            const global_state: *GlobalState =
+                @ptrCast(@alignCast(
+                    playdate.system.realloc(null, @sizeOf(GlobalState)),
+                ));
 
+            global_state.* = .{
+                .state = .request_http_access,
+                .playdate = playdate,
+                .bitmap_lib = null,
+                .current_level = 0,
+                .map = null,
+                .player = null,
+            };
+
+            playdate.system.setUpdateCallback(update_and_render, global_state);
+        },
+        else => {},
+    }
+    return 0;
+}
+
+fn HTTPAccessCallback(allowed: bool, userdata: ?*anyopaque) callconv(.C) void {
+    var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
+    const playdate = global_state.playdate;
+    playdate.system.logToConsole("HTTPAccessCallback: %i", allowed);
+    global_state.state = .init;
+}
+
+fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
+    var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
+    const playdate = global_state.playdate;
+
+    switch (global_state.state) {
+        .play => {},
+        .request_http_access => {
+            const http = playdate.network.playdate_http;
+            playdate.system.logToConsole("Requesting Access");
+            const status = http.requestAccess("localhost", 65433, false, "Elderwoods", HTTPAccessCallback, @ptrCast(global_state));
+            //const status = http.requestAccess("localhost", 65433, false, "Elderwoods", null, null);
+            playdate.system.logToConsole("Access: %i", @intFromEnum(status));
+            global_state.state = switch (status) {
+                .AccessAsk => .wait_for_http_access,
+                .AccessDeny => .init,
+                .AccessAllow => .init,
+            };
+            return 0;
+        },
+        .build_library => {
+            const bitmap_lib = BitmapLib.init(playdate);
+            const bitmap_lib_parser: *BitmapLib.BitmapLibParser = @alignCast(@ptrCast(playdate.system.realloc(null, @sizeOf(BitmapLib.BitmapLibParser))));
+            bitmap_lib_parser.* = .{
+                .bitlib = bitmap_lib,
+                .game_state = global_state,
+            };
+            //var bitmap_lib_parser = BitmapLib.BitmapLibParser{ .bitlib = bitmap_lib, .game_state = global_state };
+            //bitmap_lib_parser.buildLibrary(.{ .file = "library" });
+            bitmap_lib_parser.buildLibrary(.{ .http = .{.path = "bitmap_library" }});
+            //global_state.bitmap_lib = bitmap_lib;
+            //global_state.state = .init;
+            return 0;
+        },
+        .init => {
+            const bitmap_lib = global_state.bitmap_lib orelse {
+                playdate.system.logToConsole("Need to build bitmap lib");
+                global_state.state = .build_library;
+                return 0;
+            };
+            
             const player = Player.init(playdate, bitmap_lib, 0, 18) catch unreachable;
             playdate.sprite.addSprite(player.sprite);
 
@@ -27,28 +91,21 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
 
             var level = map.levels[current_level];
             level.populate();
-
-            const global_state: *GlobalState =
-                @ptrCast(@alignCast(
-                    playdate.system.realloc(null, @sizeOf(GlobalState)),
-                ));
+            
             global_state.* = .{
+                .state = .play,
                 .playdate = playdate,
+                .bitmap_lib = bitmap_lib,
                 .current_level = current_level,
                 .map = map,
                 .player = player,
             };
             Player.global_gamestate_ptr = global_state;
-            playdate.system.setUpdateCallback(update_and_render, global_state);
+            return 0;
         },
-        else => {},
+        .wait_for_http_response => return 0,
+        else => return 0,
     }
-    return 0;
-}
-
-fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
-    var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
-    const playdate = global_state.playdate;
 
     const draw_mode: pdapi.LCDBitmapDrawMode = .DrawModeCopy;
     playdate.graphics.setDrawMode(draw_mode);
@@ -106,7 +163,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             }
             ls.to = null;
             ls.from = null;
-            global_state.map.setLevelTags(global_state.current_level);
+            global_state.map.?.setLevelTags(global_state.current_level);
         } else {
             defer ls.tick += 4;
             offsets = switch (global_state.level_switch.stype) {
@@ -124,24 +181,25 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             }
             var x: f32 = 0.0;
             var y: f32 = 0.0;
-            playdate.sprite.getPosition(global_state.player.sprite, &x, &y);
+            const player = global_state.player.?;
+            playdate.sprite.getPosition(player.sprite, &x, &y);
             switch (global_state.level_switch.stype) {
                 // TODO these offsets should take player sprite size into account
                 .right_to_left => {
                     if (x > 4.0)
-                        playdate.sprite.moveBy(global_state.player.sprite, offsets[0], offsets[1]);
+                        playdate.sprite.moveBy(player.sprite, offsets[0], offsets[1]);
                 },
                 .left_to_right => {
                     if (x < 340.0)
-                        playdate.sprite.moveBy(global_state.player.sprite, offsets[0], offsets[1]);
+                        playdate.sprite.moveBy(player.sprite, offsets[0], offsets[1]);
                 },
                 .top_to_bottom => {
                     if (y < 172.0)
-                        playdate.sprite.moveBy(global_state.player.sprite, offsets[0], offsets[1]);
+                        playdate.sprite.moveBy(player.sprite, offsets[0], offsets[1]);
                 },
                 .bottom_to_top => {
                     if (y > -4.0)
-                        playdate.sprite.moveBy(global_state.player.sprite, offsets[0], offsets[1]);
+                        playdate.sprite.moveBy(player.sprite, offsets[0], offsets[1]);
                 },
                 else => unreachable,
             }

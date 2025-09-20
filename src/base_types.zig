@@ -9,7 +9,13 @@ pub const Position = struct {
 pub const JsonSourceType = enum {
     string,
     file,
-    //    http,
+    http,
+};
+
+pub const HttpEndPoint = struct {
+    host: [:0]const u8 = "localhost",
+    port: i32 = 65433,
+    path: [:0]const u8,
 };
 
 pub const JsonReader = struct {
@@ -42,5 +48,5 @@ pub const JsonReader = struct {
 pub const JsonSource = union(JsonSourceType) {
     string: [:0]const u8,
     file: [:0]const u8,
-    //    http: void,
+    http: HttpEndPoint,
 };

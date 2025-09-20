@@ -165,8 +165,13 @@ def build_library(node, frame=None):
             bitmap_group_imgs.append(bitmap_obj)
             total_bitmaps += 1
 
-    export_bitmaps.insert(0, {".total_sprites." :total_bitmaps})
+    export_bitmaps.insert(0, {".total_sprites.": total_bitmaps})
     return {"bitmap_library": export_bitmaps}
+
+
+def as_json(node):
+    image_export = build_library(node)
+    return json.dumps(image_export, indent=1)
 
 
 def export_callback(node):
@@ -213,7 +218,6 @@ def library_to_pts(hda_node, node, frame=None):
     bitmap_id_atr = geo.addAttrib(
         hou.attribType.Point, "bitmap_id", -1, create_local_variable=False
     )
-
 
     for i, parms in enumerate(iter_bitmap_parms(hda_node)):
         sop, mask, static, start_frame, end_frame = parms

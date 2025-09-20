@@ -1,3 +1,13 @@
+pub const GameState = enum {
+    init,
+    build_library,
+    request_http_access,
+    wait_for_http_access,
+    http_get,
+    wait_for_http_response,
+    play,
+};
+
 pub const SwitchType = enum {
     // Denotes the direction the screen wipes
     // ie, the player exits right, and the screen slides
@@ -16,10 +26,13 @@ pub const LevelTransition = struct {
     tick: i32 = 0,
 };
 
+
+state: GameState,
+bitmap_lib: ?*const BitmapLib,
 playdate: *const pdapi.PlaydateAPI,
 current_level: usize,
-player: *const Player,
-map: *Map,
+player: ?*const Player,
+map: ?*Map,
 level_switch: LevelTransition = .{},
 
 const std = @import("std");

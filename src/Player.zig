@@ -83,7 +83,7 @@ fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(
     const tag = playdate.sprite.getTag(other);
     if (tag == 255) return .CollisionTypeFreeze;
 
-    if (tag >= game_state.map.levels.len) return .CollisionTypeFreeze;
+    if (tag >= game_state.map.?.levels.len) return .CollisionTypeFreeze;
 
     var x: f32 = 0;
     var y: f32 = 0;
@@ -102,8 +102,8 @@ fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(
     }
 
     game_state.level_switch = .{
-        .from = game_state.map.levels[game_state.current_level],
-        .to = game_state.map.levels[tag],
+        .from = game_state.map.?.levels[game_state.current_level],
+        .to = game_state.map.?.levels[tag],
         .stype = switch_type,
         .tick = 0,
     };

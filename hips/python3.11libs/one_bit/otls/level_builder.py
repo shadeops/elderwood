@@ -39,9 +39,10 @@ def iter_elements_parms(node):
         flip = bool(flip.eval())
         yield (bitmap_id, pos_x, pos_y, depth, foffset, flip)
 
+
 def iter_colliders_parms(node):
     colliders_parm = node.parm("colliders")
-    num_colliders= colliders_parm.eval()
+    num_colliders = colliders_parm.eval()
     parm_groups = multiparm_iter(colliders_parm)
 
     for collider in parm_groups:
@@ -53,7 +54,7 @@ def iter_colliders_parms(node):
         ypos = ypos.evalAsInt()
         resx = resx.evalAsInt()
         resy = resy.evalAsInt()
-        yield (ctype, xpos, ypos, resx, resy )
+        yield (ctype, xpos, ypos, resx, resy)
 
 
 def reorder_callback(kwargs):
@@ -93,7 +94,8 @@ def randomize_offsets_callback(kwargs):
         bitmap_id, _, _, _, foffset, _ = parms
         duration = element_duration[bitmap_id.evalAsInt()]
         if duration is not None:
-            foffset.set(random.randint(0, duration-1))
+            foffset.set(random.randint(0, duration - 1))
+
 
 # {"level_name" : {
 #  {"sprites" : [
@@ -165,17 +167,17 @@ def build_level(node):
     sprite_list = []
     collider_list = []
     level_dict = {
-        ".level_name." : level_name,
-        "level_data" : {
-            "sprites" : [
+        ".level_name.": level_name,
+        "level_data": {
+            "sprites": [
                 {".total_sprites.": total_elements},
                 sprite_list,
             ],
-            "colliders" : [
+            "colliders": [
                 {".total_colliders.": total_colliders},
                 collider_list,
             ],
-        }
+        },
     }
     for element_id, pos_x, pos_y, depth, foffset, flip in iter_elements_parms(node):
         if element_id < 0:
@@ -196,7 +198,7 @@ def build_level(node):
         sprite_list.append(sprite)
     if total_elements:
         level_dict["level_data"]["sprites"][0][".total_sprites."] = total_elements
-    for ctype, xpos, ypos, resx, resy  in iter_colliders_parms(node):
+    for ctype, xpos, ypos, resx, resy in iter_colliders_parms(node):
         total_colliders += 1
         collider = {
             "collider": {
@@ -222,8 +224,8 @@ def build_colliders_geo(node):
     bg_vol = bg_geo.prims()[0]
     xres, yres, zres = bg_vol.resolution()
     max_res = max(*bg_vol.resolution())
-    xratio = xres/max_res
-    yratio = yres/max_res
+    xratio = xres / max_res
+    yratio = yres / max_res
 
     colliders = geo.attribValue("parms")["colliders"]
 
@@ -232,42 +234,64 @@ def build_colliders_geo(node):
     primitive_verb = sop_cat.nodeVerb("primitive")
     resample_verb = sop_cat.nodeVerb("resample")
     add_verb = sop_cat.nodeVerb("add")
-    #polyextrude_verb = sop_cat.nodeVerb("polyextrude::2.0")
+    # polyextrude_verb = sop_cat.nodeVerb("polyextrude::2.0")
     font_verb = sop_cat.nodeVerb("font")
-    primitive_verb.setParms({"closeu" : 5,})
-    #polyextrude_verb.setParms({"dist": -0.01,})
-    resample_verb.setParms({
-        "edge": 1,
-        "length": 0.025,
-        "onlypoints" : 1,
-    })
-    add_verb.setParms({
-        "switcher" : 1,
-        "add": 1,
-    })
+    primitive_verb.setParms(
+        {
+            "closeu": 5,
+        }
+    )
+    # polyextrude_verb.setParms({"dist": -0.01,})
+    resample_verb.setParms(
+        {
+            "edge": 1,
+            "length": 0.025,
+            "onlypoints": 1,
+        }
+    )
+    add_verb.setParms(
+        {
+            "switcher": 1,
+            "add": 1,
+        }
+    )
     for collider in colliders:
         if collider["collider_type#"] == 0:
             continue
 
         new_geo = hou.Geometry()
-        size_x = collider["collider_size#"][0]/max_res*2
-        size_y = collider["collider_size#"][1]/max_res*2
-        pos_x = (collider["collider_pos#"][0]/max_res*2)+size_x/2 - xratio
-        pos_y = 1*yratio - (collider["collider_pos#"][1]/max_res*2)-size_y/2
-        grid_verb.setParms({
-            "size": hou.Vector2(size_x, size_y),
-            "rows": 2,
-            "cols": 2,
-            "orient": 0,
-            "t": hou.Vector3(pos_x, pos_y, 0.0),
-        })
+        size_x = collider["collider_size#"][0] / max_res * 2
+        size_y = collider["collider_size#"][1] / max_res * 2
+        pos_x = (collider["collider_pos#"][0] / max_res * 2) + size_x / 2 - xratio
+        pos_y = 1 * yratio - (collider["collider_pos#"][1] / max_res * 2) - size_y / 2
+        grid_verb.setParms(
+            {
+                "size": hou.Vector2(size_x, size_y),
+                "rows": 2,
+                "cols": 2,
+                "orient": 0,
+                "t": hou.Vector3(pos_x, pos_y, 0.0),
+            }
+        )
         grid_verb.execute(new_geo, [])
-        primitive_verb.execute(new_geo, [new_geo,])
-        Cd_atr = new_geo.addAttrib(hou.attribType.Prim, "Cd", [1.0, 1.0, 1.0], create_local_variable=False)
+        primitive_verb.execute(
+            new_geo,
+            [
+                new_geo,
+            ],
+        )
+        Cd_atr = new_geo.addAttrib(
+            hou.attribType.Prim, "Cd", [1.0, 1.0, 1.0], create_local_variable=False
+        )
         nprims = len(new_geo.iterPrims())
-        flood_colors = list(itertools.chain(list(collider["collider_color#"])*nprims))
+        flood_colors = list(itertools.chain(list(collider["collider_color#"]) * nprims))
         new_geo.setPrimFloatAttribValues("Cd", flood_colors)
         geo.merge(new_geo)
+
+
+def as_json(node):
+    level_export = build_level(node)
+    return json.dumps(level_export, indent=1)
 
 
 def export_callback(node):

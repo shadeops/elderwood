@@ -1,7 +1,7 @@
-const library = @embedFile("library.json");
-
-const enable_debug = false;
+const enable_debug = true;
 const debug = if (builtin.mode == .Debug and enable_debug) true else false;
+
+var global_playdate_ptr: ?*const pdapi.PlaydateAPI = null;
 
 const BitmapLib = @This();
 
@@ -9,6 +9,10 @@ bitmaps: []*pdapi.LCDBitmap = &.{},
 playdate: *const pdapi.PlaydateAPI,
 
 pub fn init(playdate: *const pdapi.PlaydateAPI) *BitmapLib {
+    if (global_playdate_ptr == null) {
+        global_playdate_ptr = playdate;
+    }
+
     const bitlib_ptr: *BitmapLib = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(BitmapLib))));
     bitlib_ptr.* = BitmapLib{
         .playdate = playdate,
@@ -21,7 +25,7 @@ pub fn deinit(self: *BitmapLib) void {
         self.playdate.graphics.freeBitmap(bitmap);
     }
     self.bitmaps = &.{};
-    _ = self.playdate.system.realloc(self.bitmaps.ptr, 0);
+    _ = self.playdate.system.realloc(@ptrCast(self.bitmaps.ptr), 0);
 }
 
 pub const BitmapLibParser = struct {
@@ -30,6 +34,8 @@ pub const BitmapLibParser = struct {
     resy: c_int = 0,
     has_mask: bool = false,
     bitlib: *BitmapLib,
+    game_state: *GlobalState,
+    
     added_bitmaps: usize = 0,
 
     fn decodeError(decoder: ?*pdapi.JSONDecoder, jerror: ?[*:0]const u8, linenum: c_int) callconv(.C) void {
@@ -203,9 +209,105 @@ pub const BitmapLibParser = struct {
                 defer library_reader.deinit();
                 _ = self.bitlib.playdate.json.decode(&json_decoder, library_reader.json_reader, null);
             },
+            .http => |h| {
+
+                const playdate = self.bitlib.playdate;
+                const http = playdate.network.playdate_http;
+
+                const hconn = http.newConnection(h.host, h.port, false) orelse {
+                    playdate.system.logToConsole("Failed to create connection");
+                    return;
+                };
+                http.setReadBufferSize(hconn, 1024*128);
+                http.setUserdata(hconn, @ptrCast(self));
+                http.setRequestCompleteCallback(hconn, HTTPRequestCompleteCallback);
+                //http.setResponseCallback(hconn, HTTPRequestCompleteCallback);
+                const err = http.get(hconn, "/bitmap_library", null, 0);
+                playdate.system.logToConsole("http get(), err=%i", @intFromEnum(err));
+                self.game_state.state = .wait_for_http_response;
+            },
         }
     }
 };
+
+fn HTTPRequestCompleteCallback(conn: ?*pdapi.HTTPConnection) callconv(.C) void {
+    const playdate = global_playdate_ptr orelse unreachable;
+    playdate.system.logToConsole("Callback"); 
+    const http = playdate.network.playdate_http;
+                
+    var read: i32 = 0;
+    var total: i32 = 0;
+    http.getProgress(conn, &read, &total);
+
+    const bitmap_parser: *BitmapLibParser = @alignCast(@ptrCast(http.getUserdata(conn) orelse return));
+
+    //const json_size: usize = @intCast(http.getBytesAvailable(conn));
+    const json_size: usize = @intCast(total);
+    playdate.system.logToConsole("Available Bytes: %i", json_size); 
+     
+    const getdata_ptr: [*:0]u8 = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(u8)*json_size+1)));
+    getdata_ptr[json_size] = 0;
+    getdata_ptr[json_size-1] = 0;
+
+    defer {
+        _ = playdate.system.realloc(getdata_ptr, 0);
+    }
+
+    const err = http.getError(conn);
+    if (err != pdapi.PDNetErr.NET_OK ) {
+        playdate.system.logToConsole("http request complete, err=%i", @intFromEnum(err));
+    } else {
+        playdate.system.logToConsole("http request complete, %i bytes available", json_size);
+    }
+
+    var offset: usize = 0;
+    offset = @intCast(http.read(conn, getdata_ptr, @intCast(total)));
+    
+    playdate.system.logToConsole("read %d bytes", offset);
+    playdate.system.logToConsole("bytes available %d", http.getBytesAvailable(conn));
+    http.getProgress(conn, &read, &total);
+    playdate.system.logToConsole("Read: %i, Total: %i", read, total);
+    //var avail: i32 = total - read;
+    //while (avail > 0) {
+    //    avail = @min(avail, 4096);
+    //    offset = @intCast(http.read(conn, getdata_ptr+@as(usize,@intCast(read)), @intCast(avail)));
+    //    
+    //    playdate.system.logToConsole("read %d bytes", offset);
+    //    playdate.system.logToConsole("bytes available %d", http.getBytesAvailable(conn));
+    //    
+    //    //playdate.system.logToConsole("JSON\n%.*s", @as(c_int, avail), getdata_ptr+@as(usize,@intCast(read)));
+    //    http.getProgress(conn, &read, &total);
+    //    avail = total - read;
+    //    playdate.system.logToConsole("Read: %i, Total: %i", read, total);
+    //}
+
+    //playdate.system.logToConsole("JSON\n%.*s", @as(c_int,512), getdata_ptr+@as(usize,@intCast(total))-512);
+    //playdate.system.logToConsole("JSON\n%s", getdata_ptr+@as(usize,@intCast(total))-128);
+    //const f = playdate.file.open("test.json", pdapi.FILE_WRITE);
+    //_ = playdate.file.write(f, getdata_ptr, @intCast(total));
+    //_ = playdate.file.flush(f);
+    //_ = playdate.file.close(f);
+    //playdate.system.logToConsole("done");
+
+    var json_decoder = pdapi.JSONDecoder{
+        .decodeError = BitmapLibParser.decodeError,
+        .willDecodeSublist = BitmapLibParser.willDecodeSublist,
+        .shouldDecodeTableValueForKey = null, //shouldDecodeTableValueForKey,
+        .didDecodeTableValue = BitmapLibParser.didDecodeTableValue,
+        .shouldDecodeArrayValueAtIndex = null, //shouldDecodeArrayValueAtIndex,
+        .didDecodeArrayValue = BitmapLibParser.didDecodeArrayValue,
+        .didDecodeSublist = BitmapLibParser.didDecodeSublist,
+        .userdata = bitmap_parser,
+        .returnString = 0,
+        .path = null,
+    };
+    // not sure if the requests ends in a \0
+    playdate.system.logToConsole("About to Parse String");
+    _ = bitmap_parser.bitlib.playdate.json.decodeString(&json_decoder, getdata_ptr, null);
+    playdate.system.logToConsole("Parsed String");
+    bitmap_parser.game_state.state = .init;
+    bitmap_parser.game_state.bitmap_lib = bitmap_parser.bitlib;
+}
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -215,3 +317,4 @@ const base_types = @import("base_types.zig");
 
 const JsonSource = base_types.JsonSource;
 const JsonReader = base_types.JsonReader;
+const GlobalState = @import("GlobalState.zig");
