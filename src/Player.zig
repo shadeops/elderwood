@@ -1,7 +1,7 @@
 const enable_debug = false;
 const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
-var global_playdate_ptr: ?*const pdapi.PlaydateAPI = null;
+const playdate = @import("PDapi.zig");
 pub var global_gamestate_ptr: ?*GlobalState = null;
 
 const Player = @This();
@@ -16,7 +16,6 @@ flip: bool,
 resy: i16,
 
 fn playerMovement(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
-    const playdate = global_playdate_ptr orelse return;
     const userdata = playdate.sprite.getUserdata(sprite) orelse return;
     const player: *Player = @ptrCast(@alignCast(userdata));
 
@@ -78,7 +77,6 @@ fn playerMovement(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
 
 fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(.C) pdapi.SpriteCollisionResponseType {
     _ = sprite;
-    const playdate = global_playdate_ptr orelse return .CollisionTypeFreeze;
     var game_state = global_gamestate_ptr orelse return .CollisionTypeFreeze;
     const tag = playdate.sprite.getTag(other);
     if (tag == 255) return .CollisionTypeFreeze;
@@ -112,11 +110,7 @@ fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(
     return .CollisionTypeFreeze;
 }
 
-pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: *const BitmapLib, id: i16, duration: i6) !*Player {
-    if (global_playdate_ptr == null) {
-        global_playdate_ptr = playdate;
-    }
-
+pub fn init(bitmap_lib: *const BitmapLib, id: i16, duration: i6) !*Player {
     if (id < 0 or id >= bitmap_lib.bitmaps.len) {
         playdate.system.logToConsole("ERROR: Invalid bitmap_id %d, len: %d", id, bitmap_lib.bitmaps.len);
         return error.InvalidPlayer;
@@ -137,6 +131,7 @@ pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: *const BitmapLib, id
     playdate.sprite.moveTo(sprite, 100.0, 100.0);
     playdate.sprite.setSize(sprite, @floatFromInt(img_width), @floatFromInt(img_height));
     playdate.sprite.setCollisionsEnabled(sprite, 1);
+    // TODO: make this runtime based on size of sprite and not hard coded
     playdate.sprite.setCollideRect(sprite, .{ .x = 16.0, .y = 54.0, .width = 32.0, .height = 6.0 });
     playdate.sprite.setCollisionResponseFunction(sprite, playerCollider);
     playdate.sprite.setZIndex(sprite, 0.0);
@@ -158,7 +153,6 @@ pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: *const BitmapLib, id
 }
 
 pub fn deinit(self: *Player) void {
-    const playdate = global_playdate_ptr orelse return;
     playdate.freeSprite(self.sprite);
     playdate.realloc(self, 0);
     self = undefined;

@@ -1,27 +1,31 @@
 const debug = builtin.mode == .Debug;
 
 pub const panic = panic_handler.panic;
+const playdate = @import("PDapi.zig");
 
-pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEvent, arg: u32) callconv(.C) c_int {
+pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSystemEvent, arg: u32) callconv(.C) c_int {
     _ = arg;
     switch (event) {
         .EventInit => {
-            panic_handler.init(playdate);
+            panic_handler.init(playdate_ptr);
 
+            playdate.set_api(playdate_ptr);
+            playdate.system = playdate_ptr.system;
             const global_state: *GlobalState =
                 @ptrCast(@alignCast(
                     playdate.system.realloc(null, @sizeOf(GlobalState)),
                 ));
 
             global_state.* = .{
-                .state = .request_http_access,
-                .playdate = playdate,
-                .bitmap_lib = null,
+                .state = .init,
+                .bitmap_lib = .{},
+                .font = playdate.graphics.loadFont("/System/Fonts/Roobert-20-Medium.pft", null).?,
+                .hou_img = playdate.graphics.loadBitmap("assets/images/houdini_connect", null).?,
                 .current_level = 0,
                 .map = null,
                 .player = null,
             };
-
+            playdate.system.logToConsole("INIT DONE");
             playdate.system.setUpdateCallback(update_and_render, global_state);
         },
         else => {},
@@ -31,55 +35,51 @@ pub export fn eventHandler(playdate: *pdapi.PlaydateAPI, event: pdapi.PDSystemEv
 
 fn HTTPAccessCallback(allowed: bool, userdata: ?*anyopaque) callconv(.C) void {
     var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
-    const playdate = global_state.playdate;
     playdate.system.logToConsole("HTTPAccessCallback: %i", allowed);
     global_state.state = .init;
 }
 
 fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
-    const playdate = global_state.playdate;
 
     switch (global_state.state) {
         .play => {},
-        .request_http_access => {
-            const http = playdate.network.playdate_http;
+        .http_request_access => {
             playdate.system.logToConsole("Requesting Access");
-            const status = http.requestAccess("localhost", 65433, false, "Elderwoods", HTTPAccessCallback, @ptrCast(global_state));
+            const status = playdate.network.http.requestAccess(
+                "localhost",
+                65433,
+                false,
+                "Elderwoods",
+                HTTPAccessCallback,
+                @ptrCast(global_state),
+            );
             //const status = http.requestAccess("localhost", 65433, false, "Elderwoods", null, null);
             playdate.system.logToConsole("Access: %i", @intFromEnum(status));
             global_state.state = switch (status) {
-                .AccessAsk => .wait_for_http_access,
+                .AccessAsk => .http_wait_for_access,
                 .AccessDeny => .init,
                 .AccessAllow => .init,
             };
             return 0;
         },
         .build_library => {
-            const bitmap_lib = BitmapLib.init(playdate);
-            const bitmap_lib_parser: *BitmapLib.BitmapLibParser = @alignCast(@ptrCast(playdate.system.realloc(null, @sizeOf(BitmapLib.BitmapLibParser))));
-            bitmap_lib_parser.* = .{
-                .bitlib = bitmap_lib,
-                .game_state = global_state,
-            };
-            //var bitmap_lib_parser = BitmapLib.BitmapLibParser{ .bitlib = bitmap_lib, .game_state = global_state };
-            //bitmap_lib_parser.buildLibrary(.{ .file = "library" });
-            bitmap_lib_parser.buildLibrary(.{ .http = .{.path = "bitmap_library" }});
-            //global_state.bitmap_lib = bitmap_lib;
-            //global_state.state = .init;
+            if (!global_state.bitmap_lib.isEmpty()) global_state.bitmap_lib.clear();
+            BitmapLib.buildLibrary(global_state);
             return 0;
         },
         .init => {
-            const bitmap_lib = global_state.bitmap_lib orelse {
+            const bitmap_lib = &global_state.bitmap_lib;
+            if (global_state.bitmap_lib.isEmpty()) {
                 playdate.system.logToConsole("Need to build bitmap lib");
                 global_state.state = .build_library;
                 return 0;
-            };
-            
-            const player = Player.init(playdate, bitmap_lib, 0, 18) catch unreachable;
+            }
+
+            const player = Player.init(bitmap_lib, 0, 18) catch unreachable;
             playdate.sprite.addSprite(player.sprite);
 
-            const map = Map.init(playdate);
+            const map = Map.init();
             var map_parser = Map.MapParser{ .map = map, .bitlib = bitmap_lib };
             map_parser.buildMap(.{ .file = "map" });
             const current_level = map.starting_level;
@@ -91,11 +91,12 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
 
             var level = map.levels[current_level];
             level.populate();
-            
+
             global_state.* = .{
                 .state = .play,
-                .playdate = playdate,
-                .bitmap_lib = bitmap_lib,
+                .bitmap_lib = global_state.bitmap_lib,
+                .font = global_state.font,
+                .hou_img = global_state.hou_img,
                 .current_level = current_level,
                 .map = map,
                 .player = player,
@@ -103,7 +104,10 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             Player.global_gamestate_ptr = global_state;
             return 0;
         },
-        .wait_for_http_response => return 0,
+        .http_wait_for_response => {
+            playdate.graphics.drawBitmap(global_state.hou_img, 0, 0, .BitmapUnflipped);
+            return 1;
+        },
         else => return 0,
     }
 

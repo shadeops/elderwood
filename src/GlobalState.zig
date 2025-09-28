@@ -1,10 +1,12 @@
 pub const GameState = enum {
     init,
     build_library,
-    request_http_access,
-    wait_for_http_access,
+    build_map,
+    build_level,
+    http_request_access,
+    http_wait_for_access,
     http_get,
-    wait_for_http_response,
+    http_wait_for_response,
     play,
 };
 
@@ -26,14 +28,22 @@ pub const LevelTransition = struct {
     tick: i32 = 0,
 };
 
+const playdate = @import("PDapi.zig");
 
 state: GameState,
-bitmap_lib: ?*const BitmapLib,
-playdate: *const pdapi.PlaydateAPI,
+bitmap_lib: BitmapLib,
+//bitmap_lib_src: JsonSource = .{ .file = "library" },
+bitmap_lib_src: JsonSource = .{ .http = .{.path = "bitmap_library" }},
+
+map: ?*Map,
+
 current_level: usize,
 player: ?*const Player,
-map: ?*Map,
+
 level_switch: LevelTransition = .{},
+
+font: *pdapi.LCDFont,
+hou_img: *pdapi.LCDBitmap,
 
 const std = @import("std");
 const pdapi = @import("playdate_api_definitions.zig");
@@ -42,3 +52,4 @@ const BitmapLib = @import("BitmapLib.zig");
 const Level = @import("Level.zig");
 const Map = @import("Map.zig");
 const Player = @import("Player.zig");
+const JsonSource = @import("base_types.zig").JsonSource;

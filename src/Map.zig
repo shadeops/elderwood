@@ -1,7 +1,7 @@
 const enable_debug = false;
 const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
-var global_playdate_ptr: ?*const pdapi.PlaydateAPI = null;
+const playdate = @import("PDapi.zig");
 
 const Map = @This();
 
@@ -22,22 +22,15 @@ const CardinalDirection = enum(u2) {
 levels: []*Level = &.{},
 level_switches: []LevelSwitch = &.{},
 colliders: [4]*pdapi.LCDSprite = undefined, // n | e | w | s
-playdate: *const pdapi.PlaydateAPI,
 starting_level: usize = 0,
 current_level: usize = 0,
 player_pos_x: i32 = 0,
 player_pos_y: i32 = 0,
 collision_pad: u8 = 4,
 
-pub fn init(playdate: *const pdapi.PlaydateAPI) *Map {
-    if (global_playdate_ptr == null) {
-        global_playdate_ptr = playdate;
-    }
-
+pub fn init() *Map {
     const map_ptr: *Map = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(Map)) orelse unreachable));
-    map_ptr.* = Map{
-        .playdate = playdate,
-    };
+    map_ptr.* = Map{};
     return map_ptr;
 }
 
@@ -46,17 +39,16 @@ pub fn deinit(self: *Map) void {
     for (self.levels) |level| {
         level.deinit();
     }
-    _ = self.playdate.system.realloc(self.levels.ptr, 0);
-    _ = self.playdate.system.realloc(self.level_switches.ptr, 0);
+    _ = playdate.system.realloc(self.levels.ptr, 0);
+    _ = playdate.system.realloc(self.level_switches.ptr, 0);
     self.levels = &.{};
     self.level_switches = &.{};
     for (self.colliders) |collider| {
-        self.playdate.sprite.freeSprite(collider);
+        playdate.sprite.freeSprite(collider);
     }
 }
 
 pub fn buildLevelSwitches(self: *Map) void {
-    const playdate = self.playdate;
     const north_south_bitmap = playdate.graphics.newBitmap(400, 4, @intFromEnum(pdapi.LCDSolidColor.ColorBlack));
     const east_west_bitmap = playdate.graphics.newBitmap(4, 240, @intFromEnum(pdapi.LCDSolidColor.ColorBlack));
 
@@ -101,10 +93,10 @@ pub fn setLevelTags(self: *Map, current_level: usize) void {
     const south = self.colliders[@intFromEnum(CardinalDirection.south)];
     const east = self.colliders[@intFromEnum(CardinalDirection.east)];
     const west = self.colliders[@intFromEnum(CardinalDirection.west)];
-    self.playdate.sprite.setTag(north, lswitch.north);
-    self.playdate.sprite.setTag(south, lswitch.south);
-    self.playdate.sprite.setTag(east, lswitch.east);
-    self.playdate.sprite.setTag(west, lswitch.west);
+    playdate.sprite.setTag(north, lswitch.north);
+    playdate.sprite.setTag(south, lswitch.south);
+    playdate.sprite.setTag(east, lswitch.east);
+    playdate.sprite.setTag(west, lswitch.west);
 }
 
 pub const MapParser = struct {
@@ -115,17 +107,14 @@ pub const MapParser = struct {
     map: *Map,
 
     fn decodeError(decoder: ?*pdapi.JSONDecoder, jerror: ?[*:0]const u8, linenum: c_int) callconv(.C) void {
-        const jstate: *const MapParser = @ptrCast(@alignCast((decoder orelse return).userdata));
-        const map = jstate.map;
-        const pd = map.playdate;
-        pd.system.logToConsole("ERROR: decodeError: %s %d", jerror, linenum);
+        _ = decoder;
+        playdate.system.logToConsole("ERROR: decodeError: %s %d", jerror, linenum);
     }
 
     fn willDecodeSublist(decoder: ?*pdapi.JSONDecoder, name: ?[*:0]const u8, jtype: pdapi.JSONValueType) callconv(.C) void {
         const jstate: *MapParser = @ptrCast(@alignCast((decoder orelse return).userdata));
         const map = jstate.map;
-        const pd = map.playdate;
-        if (debug) pd.system.logToConsole("[%s] willDecodeSublist: %s, [%d]", decoder.?.path, name, @intFromEnum(jtype));
+        if (debug) playdate.system.logToConsole("[%s] willDecodeSublist: %s, [%d]", decoder.?.path, name, @intFromEnum(jtype));
 
         const key_name = std.mem.sliceTo(name orelse return, 0);
 
@@ -140,24 +129,23 @@ pub const MapParser = struct {
         const jstate: *MapParser = @ptrCast(@alignCast((decoder orelse return).userdata));
         const cls = jstate.current_level_switch;
         const map = jstate.map;
-        const pd = map.playdate;
-        if (debug) pd.system.logToConsole("[%s] didDecodeTableValue: %s [%d]", decoder.?.path, key, value.type);
+        if (debug) playdate.system.logToConsole("[%s] didDecodeTableValue: %s [%d]", decoder.?.path, key, value.type);
 
         const key_name = std.mem.sliceTo(key orelse return, 0);
         if (std.mem.eql(u8, ".total_levels.", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
             // This must be first in Level array for the allocation to take place.
             if (value.data.intval < 0) {
-                pd.system.logToConsole("ERROR: Invalid number of total_levels for level");
+                playdate.system.logToConsole("ERROR: Invalid number of total_levels for level");
                 return;
             }
 
-            const levels_ptr: [*]*Level = @ptrCast(@alignCast(pd.system.realloc(
+            const levels_ptr: [*]*Level = @ptrCast(@alignCast(playdate.system.realloc(
                 null,
                 @intCast(@sizeOf(*Level) * (value.data.intval)),
             ) orelse unreachable));
             map.levels = levels_ptr[0..@intCast(value.data.intval)];
 
-            const level_switch_ptr: [*]LevelSwitch = @ptrCast(@alignCast(pd.system.realloc(
+            const level_switch_ptr: [*]LevelSwitch = @ptrCast(@alignCast(playdate.system.realloc(
                 null,
                 @intCast(@sizeOf(*LevelSwitch) * (value.data.intval)),
             ) orelse unreachable));
@@ -166,10 +154,10 @@ pub const MapParser = struct {
                 level_switch.* = LevelSwitch{};
             }
 
-            if (debug) pd.system.logToConsole("len of levels %d", map.levels.len);
+            if (debug) playdate.system.logToConsole("len of levels %d", map.levels.len);
         } else if (std.mem.eql(u8, "name", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONString)) {
             const name = std.mem.sliceTo(value.data.stringval, 0);
-            const level = Level.init(pd, jstate.bitlib);
+            const level = Level.init(jstate.bitlib);
             var level_parser = Level.LevelParser{ .level = level };
             level_parser.buildLevel(.{ .file = name });
             map.levels[jstate.added_levels] = level;
@@ -195,18 +183,14 @@ pub const MapParser = struct {
     //fn shouldDecodeArrayValueAtIndex(decoder: ?*pdapi.JSONDecoder, pos: c_int) callconv(.C) c_int {}
 
     fn didDecodeArrayValue(decoder: ?*pdapi.JSONDecoder, pos: c_int, value: pdapi.JSONValue) callconv(.C) void {
-        const jstate: *MapParser = @ptrCast(@alignCast((decoder orelse return).userdata));
-        const map = jstate.map;
-        const pd = map.playdate;
-        if (debug) pd.system.logToConsole("didDecodeArrayValue: %d", pos);
+        _ = decoder;
+        if (debug) playdate.system.logToConsole("didDecodeArrayValue: %d", pos);
         _ = value;
     }
 
     fn didDecodeSublist(decoder: ?*pdapi.JSONDecoder, name: ?[*:0]const u8, jtype: pdapi.JSONValueType) callconv(.C) ?*anyopaque {
         const jstate: *MapParser = @ptrCast(@alignCast((decoder orelse return null).userdata));
-        const map = jstate.map;
-        const pd = map.playdate;
-        if (debug) pd.system.logToConsole("didDecodeSublist: %s", name);
+        if (debug) playdate.system.logToConsole("didDecodeSublist: %s", name);
 
         const key_name = std.mem.sliceTo(name orelse return null, 0);
 
@@ -232,23 +216,23 @@ pub const MapParser = struct {
         };
 
         switch (map_src) {
-            .string => |s| _ = self.map.playdate.json.decodeString(&json_decoder, s, null),
+            .string => |s| _ = playdate.json.decodeString(&json_decoder, s, null),
             .file => |f| {
-                var map_reader = JsonReader.init(self.map.playdate, "assets/", f) catch {
-                    self.map.playdate.system.logToConsole("ERROR: failed to build map");
+                var map_reader = JsonReader.init("assets/", f) catch {
+                    playdate.system.logToConsole("ERROR: failed to build map");
                     return;
                 };
                 defer map_reader.deinit();
-                _ = self.map.playdate.json.decode(&json_decoder, map_reader.json_reader, null);
+                _ = playdate.json.decode(&json_decoder, map_reader.json_reader, null);
             },
             .http => unreachable,
         }
 
         if (self.added_levels != self.map.levels.len)
-            self.map.playdate.system.logToConsole("ERROR: Not enough maps added");
+            playdate.system.logToConsole("ERROR: Not enough maps added");
         if (debug) {
             for (self.map.levels, 0..) |level, i| {
-                self.map.playdate.system.logToConsole("Level: %d has %d sprites", i, level.sprites.len);
+                playdate.system.logToConsole("Level: %d has %d sprites", i, level.sprites.len);
             }
         }
     }

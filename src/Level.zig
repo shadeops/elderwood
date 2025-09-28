@@ -1,65 +1,54 @@
 const enable_debug = false;
 const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
-// This is incredibly annoying. The majority of functions allow you to pass around
-// userData so various data and the Playdate API can be passed around. However for
-// the sprite update functions to fetch the userData or any other info requires
-// the Playdate API and the only way to fetch that is through a global annoyingly.
-// To work around this, in the Level.init, we'll set the ptr if it is null
-var global_playdate_ptr: ?*const pdapi.PlaydateAPI = null;
+const playdate = @import("PDapi.zig");
 
 const Level = @This();
 
 colliders: []*pdapi.LCDSprite = &.{},
 sprites: []*pdapi.LCDSprite = &.{},
 // TODO: Given that we have to have a global playdate pointer, we can probably remove this
-playdate: *const pdapi.PlaydateAPI,
 bitlib: *const BitmapLib,
 name: [32:0]u8 = [_:0]u8{0} ** 32,
 
-pub fn init(playdate: *const pdapi.PlaydateAPI, bitmap_lib: *const BitmapLib) *Level {
-    if (global_playdate_ptr == null) {
-        global_playdate_ptr = playdate;
-    }
-
+pub fn init(bitmap_lib: *const BitmapLib) *Level {
     const level_ptr: *Level = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(Level)) orelse unreachable));
     level_ptr.* = Level{
-        .playdate = playdate,
         .bitlib = bitmap_lib,
     };
     return level_ptr;
 }
 
 pub fn deinit(self: *Level) void {
-    self.playdate.sprite.removeSprites(self.sprites.ptr, self.sprites.len);
+    playdate.sprite.removeSprites(self.sprites.ptr, self.sprites.len);
     for (self.sprites) |sprite| {
-        const userdata_ptr = self.playdate.sprite.getUserdata(sprite);
-        _ = self.playdate.system.realloc(userdata_ptr, 0);
-        self.playdate.sprite.freeSprite(sprite);
+        const userdata_ptr = playdate.sprite.getUserdata(sprite);
+        _ = playdate.system.realloc(userdata_ptr, 0);
+        playdate.sprite.freeSprite(sprite);
     }
-    self.playdate.sprite.removeSprites(self.colliders.ptr, self.colliders.len);
+    playdate.sprite.removeSprites(self.colliders.ptr, self.colliders.len);
     for (self.colliders) |sprite| {
-        self.playdate.sprite.freeSprite(sprite);
+        playdate.sprite.freeSprite(sprite);
         // TODO check if this leaks the bitmap's memory
     }
-    _ = self.playdate.system.realloc(self.sprites.ptr, 0);
-    _ = self.playdate.system.realloc(self.colliders.ptr, 0);
+    _ = playdate.system.realloc(self.sprites.ptr, 0);
+    _ = playdate.system.realloc(self.colliders.ptr, 0);
     self.sprites = &.{};
     self.colliders = &.{};
 }
 
 pub fn populate(self: *const Level) void {
     for (self.sprites) |sprite| {
-        self.playdate.sprite.addSprite(sprite);
+        playdate.sprite.addSprite(sprite);
     }
     for (self.colliders) |collider| {
-        self.playdate.sprite.addSprite(collider);
+        playdate.sprite.addSprite(collider);
     }
 }
 
 pub fn clear(self: *const Level) void {
-    self.playdate.sprite.removeSprites(@ptrCast(self.sprites.ptr), @intCast(self.sprites.len));
-    self.playdate.sprite.removeSprites(@ptrCast(self.colliders.ptr), @intCast(self.colliders.len));
+    playdate.sprite.removeSprites(@ptrCast(self.sprites.ptr), @intCast(self.sprites.len));
+    playdate.sprite.removeSprites(@ptrCast(self.colliders.ptr), @intCast(self.colliders.len));
 }
 
 const LoopingSprite = struct {
@@ -69,7 +58,6 @@ const LoopingSprite = struct {
     bitlib: *const BitmapLib,
 
     fn loopAnimation(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
-        const playdate = global_playdate_ptr orelse return;
         const userdata = playdate.sprite.getUserdata(sprite) orelse return;
         const loop_state: *LoopingSprite = @ptrCast(@alignCast(userdata));
         loop_state.frame_offset = @rem(loop_state.frame_offset + 1, loop_state.duration);
@@ -123,17 +111,13 @@ pub const LevelParser = struct {
     added_colliders: usize = 0,
 
     fn decodeError(decoder: ?*pdapi.JSONDecoder, jerror: ?[*:0]const u8, linenum: c_int) callconv(.C) void {
-        const jstate: *const LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
-        const level = jstate.level;
-        const pd = level.playdate;
-        pd.system.logToConsole("ERROR: decodeError: %s %d", jerror, linenum);
+        _ = decoder;
+        playdate.system.logToConsole("ERROR: decodeError: %s %d", jerror, linenum);
     }
 
     fn willDecodeSublist(decoder: ?*pdapi.JSONDecoder, name: ?[*:0]const u8, jtype: pdapi.JSONValueType) callconv(.C) void {
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
-        const level = jstate.level;
-        const pd = level.playdate;
-        if (debug) pd.system.logToConsole("[%s] willDecodeSublist: %s, [%d]", decoder.?.path, name, @intFromEnum(jtype));
+        if (debug) playdate.system.logToConsole("[%s] willDecodeSublist: %s, [%d]", decoder.?.path, name, @intFromEnum(jtype));
 
         const key_name = std.mem.sliceTo(name orelse return, 0);
         if (jtype == .JSONArray and std.mem.eql(u8, "position", key_name)) {
@@ -150,38 +134,37 @@ pub const LevelParser = struct {
     fn didDecodeTableValue(decoder: ?*pdapi.JSONDecoder, key: ?[*:0]const u8, value: pdapi.JSONValue) callconv(.C) void {
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
         const level = jstate.level;
-        const pd = level.playdate;
-        if (debug) pd.system.logToConsole("[%s] didDecodeTableValue: %s [%d]", decoder.?.path, key, value.type);
+        if (debug) playdate.system.logToConsole("[%s] didDecodeTableValue: %s [%d]", decoder.?.path, key, value.type);
 
         const key_name = std.mem.sliceTo(key orelse return, 0);
         if (std.mem.eql(u8, ".total_sprites.", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
             // This must be first in Level array for the allocation to take place.
             if (value.data.intval < 0) {
-                pd.system.logToConsole("ERROR: Invalid number of total_sprites for level");
+                playdate.system.logToConsole("ERROR: Invalid number of total_sprites for level");
                 return;
             }
-            const sprites_ptr: [*]*pdapi.LCDSprite = @ptrCast(@alignCast(pd.system.realloc(
+            const sprites_ptr: [*]*pdapi.LCDSprite = @ptrCast(@alignCast(playdate.system.realloc(
                 null,
                 @intCast(@sizeOf(*pdapi.LCDSprite) * (value.data.intval)),
             ) orelse unreachable));
             level.sprites = sprites_ptr[0..@intCast(value.data.intval)];
-            if (debug) pd.system.logToConsole("len of sprites %d", level.sprites.len);
+            if (debug) playdate.system.logToConsole("len of sprites %d", level.sprites.len);
         } else if (std.mem.eql(u8, ".total_colliders.", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
             // This must be first in Level array for the allocation to take place.
             if (value.data.intval < 0) {
-                pd.system.logToConsole("ERROR: Invalid number of total_sprites for level");
+                playdate.system.logToConsole("ERROR: Invalid number of total_sprites for level");
                 return;
             }
-            const colliders_ptr: [*]*pdapi.LCDSprite = @ptrCast(@alignCast(pd.system.realloc(
+            const colliders_ptr: [*]*pdapi.LCDSprite = @ptrCast(@alignCast(playdate.system.realloc(
                 null,
                 @intCast(@sizeOf(*pdapi.LCDSprite) * (value.data.intval)),
             ) orelse unreachable));
             level.colliders = colliders_ptr[0..@intCast(value.data.intval)];
-            if (debug) pd.system.logToConsole("len of sprites %d", level.sprites.len);
+            if (debug) playdate.system.logToConsole("len of sprites %d", level.sprites.len);
         } else if (std.mem.eql(u8, ".level_name.", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONString)) {
             const name = std.mem.sliceTo(value.data.stringval, 0);
             if (name.len > level.name.len) {
-                pd.system.logToConsole("ERROR: %s name too long", value.data.stringval);
+                playdate.system.logToConsole("ERROR: %s name too long", value.data.stringval);
                 return;
             }
             std.mem.copyForwards(u8, &level.name, name);
@@ -218,9 +201,7 @@ pub const LevelParser = struct {
 
     fn didDecodeArrayValue(decoder: ?*pdapi.JSONDecoder, pos: c_int, value: pdapi.JSONValue) callconv(.C) void {
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
-        const level = jstate.level;
-        const pd = level.playdate;
-        if (debug) pd.system.logToConsole("didDecodeArrayValue: %d", pos);
+        if (debug) playdate.system.logToConsole("didDecodeArrayValue: %d", pos);
         if (jstate.in_position and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
             switch (pos) {
                 //1 => jstate.sprite_placement.pos.x = @truncate(value.data.intval),
@@ -241,16 +222,14 @@ pub const LevelParser = struct {
     fn didDecodeSublist(decoder: ?*pdapi.JSONDecoder, name: ?[*:0]const u8, jtype: pdapi.JSONValueType) callconv(.C) ?*anyopaque {
         _ = jtype;
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return null).userdata));
-        const level = jstate.level;
-        const pd = level.playdate;
-        if (debug) pd.system.logToConsole("didDecodeSublist: %s", name);
+        if (debug) playdate.system.logToConsole("didDecodeSublist: %s", name);
 
         const key_name = std.mem.sliceTo(name orelse return null, 0);
         if (std.mem.eql(u8, "sprite", key_name)) {
             switch (jstate.parsed_sprite) {
                 .sprite => |s| {
                     jstate.createSprite(s) catch {
-                        pd.system.logToConsole("ERROR: Unable to add sprite, Level full");
+                        playdate.system.logToConsole("ERROR: Unable to add sprite, Level full");
                         return null;
                     };
                     jstate.parsed_sprite = .{ .none = {} };
@@ -261,7 +240,7 @@ pub const LevelParser = struct {
             switch (jstate.parsed_sprite) {
                 .collider => |c| {
                     jstate.createCollider(c) catch {
-                        pd.system.logToConsole("ERROR: Unable to add sprite, Level full");
+                        playdate.system.logToConsole("ERROR: Unable to add sprite, Level full");
                         return null;
                     };
                     jstate.parsed_sprite = .{ .none = {} };
@@ -276,13 +255,12 @@ pub const LevelParser = struct {
 
     fn createSprite(self: *LevelParser, placement: SpritePlacement) error{LevelFull}!void {
         if (self.added_sprites + 1 > self.level.sprites.len) return error.LevelFull;
-        const pd = self.level.playdate;
-        if (debug) pd.system.logToConsole("Creating Sprite");
+        if (debug) playdate.system.logToConsole("Creating Sprite");
 
-        const sprite = pd.sprite.newSprite() orelse unreachable;
+        const sprite = playdate.sprite.newSprite() orelse unreachable;
         const id = placement.id;
         if (id < 0 or id >= self.level.bitlib.bitmaps.len) {
-            pd.system.logToConsole("ERROR: Invalid bitmap_id %d, len: %d", id, self.level.bitlib.bitmaps.len);
+            playdate.system.logToConsole("ERROR: Invalid bitmap_id %d, len: %d", id, self.level.bitlib.bitmaps.len);
             return;
         }
         // TODO
@@ -291,26 +269,26 @@ pub const LevelParser = struct {
         const bitmap = self.level.bitlib.bitmaps[@as(usize, @intCast(id)) + offset];
         var img_width: c_int = 0;
         var img_height: c_int = 0;
-        pd.graphics.getBitmapData(bitmap, &img_width, &img_height, null, null, null);
-        pd.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
+        playdate.graphics.getBitmapData(bitmap, &img_width, &img_height, null, null, null);
+        playdate.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
 
         // This is required since the flipped arg of setImage doesn't seem to work.
-        pd.sprite.setImageFlip(sprite, if (placement.flip) .BitmapFlippedXY else .BitmapFlippedY);
-        pd.sprite.setCenter(sprite, 0.0, 0.0);
-        pd.sprite.moveTo(sprite, @floatFromInt(placement.pos.x), @floatFromInt(placement.pos.y));
-        pd.sprite.setSize(sprite, @floatFromInt(img_width), @floatFromInt(img_height));
-        pd.sprite.setZIndex(sprite, placement.depth);
+        playdate.sprite.setImageFlip(sprite, if (placement.flip) .BitmapFlippedXY else .BitmapFlippedY);
+        playdate.sprite.setCenter(sprite, 0.0, 0.0);
+        playdate.sprite.moveTo(sprite, @floatFromInt(placement.pos.x), @floatFromInt(placement.pos.y));
+        playdate.sprite.setSize(sprite, @floatFromInt(img_width), @floatFromInt(img_height));
+        playdate.sprite.setZIndex(sprite, placement.depth);
         if (placement.animated) {
             // TODO check return ptr
-            const loop_state: *LoopingSprite = @ptrCast(@alignCast(pd.system.realloc(null, @sizeOf(LoopingSprite))));
+            const loop_state: *LoopingSprite = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(LoopingSprite))));
             loop_state.* = .{
                 .id = placement.id,
                 .duration = placement.duration,
                 .frame_offset = placement.frame_offset,
                 .bitlib = self.level.bitlib,
             };
-            pd.sprite.setUserdata(sprite, @ptrCast(loop_state));
-            pd.sprite.setUpdateFunction(sprite, LoopingSprite.loopAnimation);
+            playdate.sprite.setUserdata(sprite, @ptrCast(loop_state));
+            playdate.sprite.setUpdateFunction(sprite, LoopingSprite.loopAnimation);
         }
         self.added_sprites += 1;
         self.level.sprites[self.added_sprites - 1] = sprite;
@@ -318,24 +296,23 @@ pub const LevelParser = struct {
 
     fn createCollider(self: *LevelParser, collider: ColliderPlacement) error{LevelFull}!void {
         if (self.added_colliders + 1 > self.level.colliders.len) return error.LevelFull;
-        const pd = self.level.playdate;
-        if (debug) pd.system.logToConsole("Creating Collider");
+        if (debug) playdate.system.logToConsole("Creating Collider");
 
         // TODO: check if this needs to be freed
-        const bitmap = pd.graphics.newBitmap(collider.resx, collider.resy, @intFromEnum(pdapi.LCDSolidColor.ColorBlack));
-        const sprite = pd.sprite.newSprite() orelse unreachable;
-        pd.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
-        pd.sprite.setCenter(sprite, 0, 0);
-        pd.sprite.setSize(sprite, @floatFromInt(collider.resx), @floatFromInt(collider.resy));
-        pd.sprite.moveTo(sprite, @floatFromInt(collider.pos.x), @floatFromInt(collider.pos.y));
-        pd.sprite.setCollisionsEnabled(sprite, 1);
-        pd.sprite.setCollideRect(sprite, .{
+        const bitmap = playdate.graphics.newBitmap(collider.resx, collider.resy, @intFromEnum(pdapi.LCDSolidColor.ColorBlack));
+        const sprite = playdate.sprite.newSprite() orelse unreachable;
+        playdate.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
+        playdate.sprite.setCenter(sprite, 0, 0);
+        playdate.sprite.setSize(sprite, @floatFromInt(collider.resx), @floatFromInt(collider.resy));
+        playdate.sprite.moveTo(sprite, @floatFromInt(collider.pos.x), @floatFromInt(collider.pos.y));
+        playdate.sprite.setCollisionsEnabled(sprite, 1);
+        playdate.sprite.setCollideRect(sprite, .{
             .x = 0.0,
             .y = 0.0,
             .width = @floatFromInt(collider.resx),
             .height = @floatFromInt(collider.resy),
         });
-        pd.sprite.setVisible(sprite, 0);
+        playdate.sprite.setVisible(sprite, 0);
         self.added_colliders += 1;
         self.level.colliders[self.added_colliders - 1] = sprite;
     }
@@ -355,23 +332,23 @@ pub const LevelParser = struct {
         };
 
         switch (level_src) {
-            .string => |s| _ = self.level.playdate.json.decodeString(&json_decoder, s, null),
+            .string => |s| _ = playdate.json.decodeString(&json_decoder, s, null),
             .file => |f| {
-                var level_reader = LevelReader.init(self.level.playdate, "assets/levels/", f) catch {
-                    self.level.playdate.system.logToConsole("ERROR: failed to build level");
+                var level_reader = LevelReader.init("assets/levels/", f) catch {
+                    playdate.system.logToConsole("ERROR: failed to build level");
                     return;
                 };
                 defer level_reader.deinit();
-                _ = self.level.playdate.json.decode(&json_decoder, level_reader.json_reader, null);
+                _ = playdate.json.decode(&json_decoder, level_reader.json_reader, null);
             },
             .http => unreachable,
         }
 
         if (self.added_sprites != self.level.sprites.len)
-            self.level.playdate.system.logToConsole("ERROR: Not enough sprites added");
+            playdate.system.logToConsole("ERROR: Not enough sprites added");
         if (self.added_colliders != self.level.colliders.len)
-            self.level.playdate.system.logToConsole("ERROR: Not enough colliders added");
-        if (debug) self.level.playdate.system.logToConsole("Loaded %s", &self.level.name);
+            playdate.system.logToConsole("ERROR: Not enough colliders added");
+        if (debug) playdate.system.logToConsole("Loaded %s", &self.level.name);
     }
 };
 

@@ -1565,8 +1565,8 @@ pub const PlaydateTCP = extern struct {
 };
 
 pub const PlaydateNetwork = extern struct {
-    playdate_http: *const PlaydateHTTP,
-    playdate_tcp: *const PlaydateTCP,
+    http: *const PlaydateHTTP,
+    tcp: *const PlaydateTCP,
 
     getStatus: *const fn () callconv(.C) WifiStatus,
     setEnabled: *const fn (flag: bool, callback: ?*const fn (err: PDNetErr) callconv(.C) void) callconv(.C) void,
