@@ -6,7 +6,7 @@ Technical demo using Houdini and Zig to create a game world on the Playdate.
 ##  <a name="Requirements"></a>Requirements
 - Either macOS, Windows, or Linux.
 - Zig compiler 0.14.x series. Pulling down the [latest build from master](https://ziglang.org/download/) is your best bet.
-- [Playdate SDK](https://play.date/dev/) 2.7.3 or later installed.
+- [Playdate SDK](https://play.date/dev/) 2.7.6 or later installed.
 
 ## Run Code
 1. Make sure the Playdate SDK is installed, Zig is installed and in your PATH, and all other [requirements](#Requirements) are met.
