@@ -22,7 +22,6 @@ pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSyst
                 .bitmap_lib = .default,
                 .font = playdate.graphics.loadFont("/System/Fonts/Roobert-20-Medium.pft", null).?,
                 .hou_img = playdate.graphics.loadBitmap("assets/images/houdini_connect", null).?,
-                .current_level = 0,
                 .map = .default,
                 .player = null,
             };
@@ -77,7 +76,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             defer global_state.state = .init;
             global_state.map.current_level = global_state.map.starting_level;
             global_state.map.buildLevelSwitches();
-            global_state.map.setLevelTags(global_state.map.current_level);
+            global_state.map.setLevelTags();
             if (debug) {
                 for (global_state.map.levels, 0..) |level, i| {
                     playdate.system.logToConsole("Level: %d has %d sprites", i, level.sprites.len);
@@ -93,31 +92,30 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
                 return 0;
             }
 
-            const map = &global_state.map;
-            if (map.isEmpty()) {
+            if (global_state.map.isEmpty()) {
                 playdate.system.logToConsole("Need to build map");
                 global_state.state = .build_map;
                 return 0;
             }
-            
+
             const player = Player.init(bitmap_lib, 0, 18) catch unreachable;
             playdate.sprite.addSprite(player.sprite);
-            
-            playdate.sprite.moveTo(player.sprite, @floatFromInt(map.player_pos_x), @floatFromInt(map.player_pos_y));
-            playdate.sprite.setZIndex(player.sprite, @intCast(map.player_pos_y));
 
-            var level = map.levels[global_state.map.current_level];
-            level.populate();
+            playdate.sprite.moveTo(
+                player.sprite,
+                @floatFromInt(global_state.map.player_pos_x),
+                @floatFromInt(global_state.map.player_pos_y),
+            );
+            playdate.sprite.setZIndex(
+                player.sprite,
+                @intCast(global_state.map.player_pos_y),
+            );
 
-            global_state.* = .{
-                .state = .play,
-                .bitmap_lib = global_state.bitmap_lib,
-                .font = global_state.font,
-                .hou_img = global_state.hou_img,
-                .current_level = global_state.map.current_level,
-                .map = global_state.map,
-                .player = player,
-            };
+            global_state.map.levels[global_state.map.current_level].populate();
+
+            global_state.state = .play;
+            global_state.player = player;
+
             Player.global_gamestate_ptr = global_state;
             return 0;
         },
@@ -184,7 +182,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             }
             ls.to = null;
             ls.from = null;
-            global_state.map.setLevelTags(global_state.current_level);
+            global_state.map.setLevelTags();
         } else {
             defer ls.tick += 4;
             offsets = switch (global_state.level_switch.stype) {

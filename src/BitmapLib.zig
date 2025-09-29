@@ -6,7 +6,7 @@ const playdate = @import("PDapi.zig");
 const BitmapLib = @This();
 pub const default: BitmapLib = .{ .bitmaps = &.{} };
 
-bitmaps: []*pdapi.LCDBitmap,// = &.{},
+bitmaps: []*pdapi.LCDBitmap, // = &.{},
 
 pub fn isEmpty(self: *const BitmapLib) bool {
     return self.bitmaps.len == 0;
@@ -215,7 +215,6 @@ pub fn buildLibrary(game_state: *GlobalState) void {
 }
 
 fn HTTPRequestCompleteCallback(conn: ?*pdapi.HTTPConnection) callconv(.C) void {
-
     if (debug) playdate.system.logToConsole("BitmapLib HTTP Request Callback");
 
     // Must free response

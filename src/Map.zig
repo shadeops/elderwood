@@ -32,7 +32,6 @@ pub const default: Map = .{
 
 levels: []*Level,
 level_switches: []LevelSwitch,
-// TODO move these to the GlobalState since they always exist
 colliders: [4]*pdapi.LCDSprite,
 starting_level: u8,
 current_level: u8,
@@ -40,18 +39,11 @@ collision_pad: u8,
 player_pos_x: i32,
 player_pos_y: i32,
 
-
 pub fn isEmpty(self: *const Map) bool {
     return self.levels.len == 0;
 }
 
-pub fn init() *Map {
-    const map_ptr: *Map = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(Map)) orelse unreachable));
-    map_ptr.* = Map{};
-    return map_ptr;
-}
-
-pub fn deinit(self: *Map) void {
+pub fn clear(self: *Map) void {
     for (self.levels) |level| {
         level.deinit();
     }
@@ -101,9 +93,9 @@ pub fn buildLevelSwitches(self: *Map) void {
     }
 }
 
-pub fn setLevelTags(self: *Map, current_level: usize) void {
-    if (current_level >= self.level_switches.len) return;
-    const lswitch = self.level_switches[current_level];
+pub fn setLevelTags(self: *Map) void {
+    if (self.current_level >= self.level_switches.len) return;
+    const lswitch = self.level_switches[self.current_level];
 
     const north = self.colliders[@intFromEnum(CardinalDirection.north)];
     const south = self.colliders[@intFromEnum(CardinalDirection.south)];
@@ -212,7 +204,7 @@ pub const MapParser = struct {
         }
         return null;
     }
-    
+
     fn initDecoder(self: *MapParser) pdapi.JSONDecoder {
         return .{
             .decodeError = decodeError,
@@ -227,12 +219,9 @@ pub const MapParser = struct {
             .path = null,
         };
     }
-
-
 };
-    
-pub fn buildMap(game_state: *GlobalState) void {
 
+pub fn buildMap(game_state: *GlobalState) void {
     const map = &game_state.map;
     game_state.state = blk: switch (game_state.map_src) {
         .string => |s| {
@@ -269,11 +258,9 @@ pub fn buildMap(game_state: *GlobalState) void {
             break :blk .http_wait_for_response;
         },
     };
-
 }
 
 fn HTTPRequestCompleteCallback(conn: ?*pdapi.HTTPConnection) callconv(.C) void {
-
     if (debug) playdate.system.logToConsole("Map HTTP Request Callback");
 
     // Must free response

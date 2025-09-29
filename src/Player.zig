@@ -100,12 +100,12 @@ fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(
     }
 
     game_state.level_switch = .{
-        .from = game_state.map.levels[game_state.current_level],
+        .from = game_state.map.levels[game_state.map.current_level],
         .to = game_state.map.levels[tag],
         .stype = switch_type,
         .tick = 0,
     };
-    game_state.current_level = tag;
+    game_state.map.current_level = tag;
 
     return .CollisionTypeFreeze;
 }
