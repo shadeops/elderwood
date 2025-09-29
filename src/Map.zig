@@ -49,11 +49,10 @@ pub fn clear(self: *Map) void {
     }
     _ = playdate.system.realloc(self.levels.ptr, 0);
     _ = playdate.system.realloc(self.level_switches.ptr, 0);
-    self.levels = &.{};
-    self.level_switches = &.{};
     for (self.colliders) |collider| {
         playdate.sprite.freeSprite(collider);
     }
+    self.* = .default;
 }
 
 pub fn buildLevelSwitches(self: *Map) void {

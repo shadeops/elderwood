@@ -55,7 +55,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
                 @ptrCast(global_state),
             );
             //const status = http.requestAccess("localhost", 65433, false, "Elderwoods", null, null);
-            playdate.system.logToConsole("Access: %i", @intFromEnum(status));
+            if (debug) playdate.system.logToConsole("Access: %i", @intFromEnum(status));
             global_state.state = switch (status) {
                 .AccessAsk => .http_wait_for_access,
                 .AccessDeny => .init,
@@ -69,6 +69,8 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             return 0;
         },
         .build_map => {
+            // Triggers a build of the map, can't interact with the map until the
+            // .init_map phase incase there is a http get event
             Map.buildMap(global_state);
             return 0;
         },

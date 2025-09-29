@@ -6,7 +6,7 @@ const playdate = @import("PDapi.zig");
 const BitmapLib = @This();
 pub const default: BitmapLib = .{ .bitmaps = &.{} };
 
-bitmaps: []*pdapi.LCDBitmap, // = &.{},
+bitmaps: []*pdapi.LCDBitmap,
 
 pub fn isEmpty(self: *const BitmapLib) bool {
     return self.bitmaps.len == 0;
