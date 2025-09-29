@@ -1,4 +1,5 @@
-const debug = builtin.mode == .Debug;
+const enable_debug = false;
+const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
 pub const panic = panic_handler.panic;
 const playdate = @import("PDapi.zig");
@@ -18,11 +19,11 @@ pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSyst
 
             global_state.* = .{
                 .state = .init,
-                .bitmap_lib = .{},
+                .bitmap_lib = .default,
                 .font = playdate.graphics.loadFont("/System/Fonts/Roobert-20-Medium.pft", null).?,
                 .hou_img = playdate.graphics.loadBitmap("assets/images/houdini_connect", null).?,
                 .current_level = 0,
-                .map = null,
+                .map = .default,
                 .player = null,
             };
             playdate.system.logToConsole("INIT DONE");
@@ -68,28 +69,44 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             BitmapLib.buildLibrary(global_state);
             return 0;
         },
+        .build_map => {
+            Map.buildMap(global_state);
+            return 0;
+        },
+        .init_map => {
+            defer global_state.state = .init;
+            global_state.map.current_level = global_state.map.starting_level;
+            global_state.map.buildLevelSwitches();
+            global_state.map.setLevelTags(global_state.map.current_level);
+            if (debug) {
+                for (global_state.map.levels, 0..) |level, i| {
+                    playdate.system.logToConsole("Level: %d has %d sprites", i, level.sprites.len);
+                }
+            }
+            return 0;
+        },
         .init => {
             const bitmap_lib = &global_state.bitmap_lib;
-            if (global_state.bitmap_lib.isEmpty()) {
+            if (bitmap_lib.isEmpty()) {
                 playdate.system.logToConsole("Need to build bitmap lib");
                 global_state.state = .build_library;
                 return 0;
             }
 
+            const map = &global_state.map;
+            if (map.isEmpty()) {
+                playdate.system.logToConsole("Need to build map");
+                global_state.state = .build_map;
+                return 0;
+            }
+            
             const player = Player.init(bitmap_lib, 0, 18) catch unreachable;
             playdate.sprite.addSprite(player.sprite);
-
-            const map = Map.init();
-            var map_parser = Map.MapParser{ .map = map, .bitlib = bitmap_lib };
-            map_parser.buildMap(.{ .file = "map" });
-            const current_level = map.starting_level;
-            map.buildLevelSwitches();
-            map.setLevelTags(current_level);
-
+            
             playdate.sprite.moveTo(player.sprite, @floatFromInt(map.player_pos_x), @floatFromInt(map.player_pos_y));
             playdate.sprite.setZIndex(player.sprite, @intCast(map.player_pos_y));
 
-            var level = map.levels[current_level];
+            var level = map.levels[global_state.map.current_level];
             level.populate();
 
             global_state.* = .{
@@ -97,8 +114,8 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
                 .bitmap_lib = global_state.bitmap_lib,
                 .font = global_state.font,
                 .hou_img = global_state.hou_img,
-                .current_level = current_level,
-                .map = map,
+                .current_level = global_state.map.current_level,
+                .map = global_state.map,
                 .player = player,
             };
             Player.global_gamestate_ptr = global_state;
@@ -120,7 +137,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     playdate.system.getButtonState(&current_buttons, &pushed_buttons, &released_buttons);
 
     if (global_state.level_switch.stype != .none) {
-        var offsets = [_]f32{0.0} ** 2;
+        var offsets: [2]f32 = @splat(0.0);
         const ls = &global_state.level_switch;
         const to = ls.to orelse {
             ls.* = .{};
@@ -167,7 +184,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             }
             ls.to = null;
             ls.from = null;
-            global_state.map.?.setLevelTags(global_state.current_level);
+            global_state.map.setLevelTags(global_state.current_level);
         } else {
             defer ls.tick += 4;
             offsets = switch (global_state.level_switch.stype) {

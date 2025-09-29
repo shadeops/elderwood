@@ -9,7 +9,7 @@ colliders: []*pdapi.LCDSprite = &.{},
 sprites: []*pdapi.LCDSprite = &.{},
 // TODO: Given that we have to have a global playdate pointer, we can probably remove this
 bitlib: *const BitmapLib,
-name: [32:0]u8 = [_:0]u8{0} ** 32,
+name: [32:0]u8 = @splat(0),
 
 pub fn init(bitmap_lib: *const BitmapLib) *Level {
     const level_ptr: *Level = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(Level)) orelse unreachable));
