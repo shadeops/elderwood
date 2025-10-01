@@ -188,8 +188,8 @@ pub fn buildLibrary(game_state: *GlobalState) void {
             break :blk .init;
         },
         .file => |f| {
-            var library_reader = JsonReader.init("assets/", f) catch {
-                playdate.system.logToConsole("ERROR: failed to read '%s.json' from assets", f.ptr);
+            var library_reader = JsonReader.init(f) catch {
+                playdate.system.logToConsole("ERROR: failed to read '%s.json' from %s", f.name.ptr, f.path.ptr);
                 return;
             };
             defer library_reader.deinit();
@@ -207,7 +207,9 @@ pub fn buildLibrary(game_state: *GlobalState) void {
             playdate.network.http.setUserdata(hconn, @ptrCast(game_state));
             playdate.network.http.setRequestCompleteCallback(hconn, HTTPRequestCompleteCallback);
             //http.setResponseCallback(hconn, HTTPRequestCompleteCallback);
-            const err = playdate.network.http.get(hconn, h.path, null, 0);
+            var buf: [64:0]u8 = @splat(0);
+            const path = h.getPath(&buf);
+            const err = playdate.network.http.get(hconn, path, null, 0);
             if (debug) playdate.system.logToConsole("http get(), err=%i", @intFromEnum(err));
             break :blk .http_wait_for_response;
         },

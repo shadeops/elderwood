@@ -7,15 +7,19 @@ const Level = @This();
 
 colliders: []*pdapi.LCDSprite = &.{},
 sprites: []*pdapi.LCDSprite = &.{},
-// TODO: Given that we have to have a global playdate pointer, we can probably remove this
+
 bitlib: *const BitmapLib,
 name: [32:0]u8 = @splat(0),
 
-pub fn init(bitmap_lib: *const BitmapLib) *Level {
+loaded: bool,
+
+pub fn init(map_name: []const u8, bitmap_lib: *const BitmapLib) *Level {
     const level_ptr: *Level = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(Level)) orelse unreachable));
     level_ptr.* = Level{
         .bitlib = bitmap_lib,
+        .loaded = false,
     };
+    std.mem.copyForwards(u8, &level_ptr.name, map_name);
     return level_ptr;
 }
 
@@ -23,18 +27,21 @@ pub fn deinit(self: *Level) void {
     playdate.sprite.removeSprites(self.sprites.ptr, self.sprites.len);
     for (self.sprites) |sprite| {
         const userdata_ptr = playdate.sprite.getUserdata(sprite);
-        _ = playdate.system.realloc(userdata_ptr, 0);
+        if (userdata_ptr) |userdata| _ = playdate.system.realloc(userdata, 0);
         playdate.sprite.freeSprite(sprite);
     }
     playdate.sprite.removeSprites(self.colliders.ptr, self.colliders.len);
     for (self.colliders) |sprite| {
+        const bitmap = playdate.sprite.getImage(sprite);
+        playdate.graphics.freeBitmap(bitmap);
         playdate.sprite.freeSprite(sprite);
-        // TODO check if this leaks the bitmap's memory
     }
     _ = playdate.system.realloc(self.sprites.ptr, 0);
     _ = playdate.system.realloc(self.colliders.ptr, 0);
     self.sprites = &.{};
     self.colliders = &.{};
+    self.name = @splat(0);
+    self.loaded = false;
 }
 
 pub fn populate(self: *const Level) void {
@@ -104,9 +111,10 @@ const ParsedSprite = union(SpriteType) {
 };
 
 pub const LevelParser = struct {
+    level: *Level,
+    game_state: *GlobalState,
     in_position: bool = false,
     parsed_sprite: ParsedSprite = .{ .none = {} },
-    level: *Level,
     added_sprites: usize = 0,
     added_colliders: usize = 0,
 
@@ -129,7 +137,6 @@ pub const LevelParser = struct {
         }
     }
 
-    //fn shouldDecodeTableValueForKey(decoder: ?*pdapi.JSONDecoder, key: ?[*:0]const u8) callconv(.C) c_int {}
 
     fn didDecodeTableValue(decoder: ?*pdapi.JSONDecoder, key: ?[*:0]const u8, value: pdapi.JSONValue) callconv(.C) void {
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
@@ -197,7 +204,6 @@ pub const LevelParser = struct {
         }
     }
 
-    //fn shouldDecodeArrayValueAtIndex(decoder: ?*pdapi.JSONDecoder, pos: c_int) callconv(.C) c_int {}
 
     fn didDecodeArrayValue(decoder: ?*pdapi.JSONDecoder, pos: c_int, value: pdapi.JSONValue) callconv(.C) void {
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
@@ -298,7 +304,6 @@ pub const LevelParser = struct {
         if (self.added_colliders + 1 > self.level.colliders.len) return error.LevelFull;
         if (debug) playdate.system.logToConsole("Creating Collider");
 
-        // TODO: check if this needs to be freed
         const bitmap = playdate.graphics.newBitmap(collider.resx, collider.resy, @intFromEnum(pdapi.LCDSolidColor.ColorBlack));
         const sprite = playdate.sprite.newSprite() orelse unreachable;
         playdate.sprite.setImage(sprite, bitmap, .BitmapUnflipped);
@@ -316,41 +321,95 @@ pub const LevelParser = struct {
         self.added_colliders += 1;
         self.level.colliders[self.added_colliders - 1] = sprite;
     }
-
-    pub fn buildLevel(self: *LevelParser, level_src: LevelSource) void {
-        var json_decoder = pdapi.JSONDecoder{
+    
+    fn initDecoder(self: *LevelParser) pdapi.JSONDecoder {
+        return .{
             .decodeError = decodeError,
             .willDecodeSublist = willDecodeSublist,
-            .shouldDecodeTableValueForKey = null, //shouldDecodeTableValueForKey,
+            .shouldDecodeTableValueForKey = null,
             .didDecodeTableValue = didDecodeTableValue,
-            .shouldDecodeArrayValueAtIndex = null, //shouldDecodeArrayValueAtIndex,
+            .shouldDecodeArrayValueAtIndex = null,
             .didDecodeArrayValue = didDecodeArrayValue,
             .didDecodeSublist = didDecodeSublist,
             .userdata = self,
             .returnString = 0,
             .path = null,
         };
-
-        switch (level_src) {
-            .string => |s| _ = playdate.json.decodeString(&json_decoder, s, null),
-            .file => |f| {
-                var level_reader = LevelReader.init("assets/levels/", f) catch {
-                    playdate.system.logToConsole("ERROR: failed to build level");
-                    return;
-                };
-                defer level_reader.deinit();
-                _ = playdate.json.decode(&json_decoder, level_reader.json_reader, null);
-            },
-            .http => unreachable,
-        }
-
-        if (self.added_sprites != self.level.sprites.len)
-            playdate.system.logToConsole("ERROR: Not enough sprites added");
-        if (self.added_colliders != self.level.colliders.len)
-            playdate.system.logToConsole("ERROR: Not enough colliders added");
-        if (debug) playdate.system.logToConsole("Loaded %s", &self.level.name);
     }
+
 };
+
+
+pub fn buildLevel(self: *Level, game_state: *GlobalState) void {
+    // rethink this. We want to set this to be true so that the build levels state
+    // doesn't try to reload this level
+    defer self.loaded = true; 
+    if (debug) playdate.system.logToConsole("Loading Level %s", &self.name);
+    game_state.state = blk: switch (game_state.level_src) {
+        .string => |s| {
+            var level_parser = LevelParser{ .level = self, .game_state = game_state };
+            var json_decoder = level_parser.initDecoder();
+            _ = playdate.json.decodeString(&json_decoder, s, null);
+            break :blk .build_levels;
+        },
+        .file => |f| {
+            var level_src = f;
+            level_src.name = std.mem.sliceTo(&self.name, 0);
+            var level_reader = JsonReader.init(level_src) catch {
+                playdate.system.logToConsole("wtf");
+                playdate.system.logToConsole("ERROR: failed to read '%s%s' from %s", level_src.name.ptr, level_src.ext.ptr, level_src.path.ptr,);
+                return;
+            };
+            defer level_reader.deinit();
+            var level_parser = LevelParser{ .level = self, .game_state = game_state };
+            var json_decoder = level_parser.initDecoder();
+            _ = playdate.json.decode(&json_decoder, level_reader.json_reader, null);
+            break :blk .build_levels;
+        },
+        .http => |h| {
+            const hconn = playdate.network.http.newConnection(h.host, h.port, false) orelse {
+                playdate.system.logToConsole("ERROR: Failed to create connection");
+                return;
+            };
+            playdate.network.http.setReadBufferSize(hconn, 1024 * 128);
+    
+            const level_parser: *LevelParser = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(LevelParser))));
+            level_parser.* = .{ 
+                .level = self,
+                .game_state = game_state,
+            };
+            
+            playdate.network.http.setUserdata(hconn, @ptrCast(level_parser));
+            playdate.network.http.setRequestCompleteCallback(hconn, HTTPRequestCompleteCallback);
+            var level_src = h;
+            level_src.name = std.mem.sliceTo(&self.name, 0);
+            var buf: [64:0]u8 = @splat(0);
+            const path = level_src.getPath(&buf);
+            const err = playdate.network.http.get(hconn, path, null, 0);
+            if (debug) playdate.system.logToConsole("http get(), err=%i", @intFromEnum(err));
+            break :blk .http_wait_for_response;
+        },
+    };
+}
+
+fn HTTPRequestCompleteCallback(conn: ?*pdapi.HTTPConnection) callconv(.C) void {
+    if (debug) playdate.system.logToConsole("Map HTTP Request Callback");
+
+    // Must free response
+    const response = http.readResponse(conn orelse return);
+    defer _ = playdate.system.realloc(response.ptr, 0);
+
+    const level_parser: *LevelParser = @ptrCast(@alignCast(playdate.network.http.getUserdata(conn)));
+    defer _ = playdate.system.realloc(@ptrCast(level_parser), 0);
+
+    if (debug) playdate.system.logToConsole("About to Parse Level");
+    var json_decoder = level_parser.initDecoder();
+    _ = playdate.json.decodeString(&json_decoder, response.ptr, null);
+
+    level_parser.game_state.state = .build_levels;
+    if (debug) playdate.system.logToConsole("Parsed Level");
+}
+
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -358,7 +417,9 @@ const pdapi = @import("playdate_api_definitions.zig");
 
 const BitmapLib = @import("BitmapLib.zig");
 const base_types = @import("base_types.zig");
+const JsonReader = base_types.JsonReader;
+
+const http = @import("http.zig");
+const GlobalState = @import("GlobalState.zig");
 
 const Position = base_types.Position;
-const LevelSource = base_types.JsonSource;
-const LevelReader = base_types.JsonReader;

@@ -3,7 +3,8 @@ pub const GameState = enum {
     build_library,
     build_map,
     init_map,
-    build_level,
+    build_levels,
+    buld_current_level,
     http_request_access,
     http_wait_for_access,
     http_get,
@@ -33,18 +34,21 @@ const playdate = @import("PDapi.zig");
 
 state: GameState,
 bitmap_lib: BitmapLib = .default,
-bitmap_lib_src: JsonSource = .{ .file = "library" },
-//bitmap_lib_src: JsonSource = .{ .http = .{ .path = "/bitmap_library" } },
+//bitmap_lib_src: JsonSource = .{ .file = .{ .name = "library"} },
+bitmap_lib_src: JsonSource = .{ .http = .{ .name = "bitmap_library" } },
 
 map: Map = .default,
-map_src: JsonSource = .{ .file = "map" },
-//map_src: JsonSource = .{ .http = .{ .path = "/map" } },
+//map_src: JsonSource = .{ .file = .{ .name = "map" } },
+map_src: JsonSource = .{ .http = .{ .name = "map" } },
+
+//level_src: JsonSource = .{ .file = .{ .name = "", .path = "/assets/levels/", .ext = ".json"} },
+level_src: JsonSource = .{ .http = .{ .name = "" } },
 
 player: ?*const Player,
 
 level_switch: LevelTransition = .{},
 
-font: *pdapi.LCDFont,
+//font: *pdapi.LCDFont,
 hou_img: *pdapi.LCDBitmap,
 
 const std = @import("std");

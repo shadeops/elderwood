@@ -10,7 +10,17 @@ pub const Position = struct {
 pub const HttpEndPoint = struct {
     host: [:0]const u8 = "localhost",
     port: i32 = 65433,
-    path: [:0]const u8,
+    path: [:0]const u8 = "/",
+    name: [:0]const u8,
+    
+    pub fn getPath(self: *const HttpEndPoint, buf: [:0]u8) [:0]u8 {
+        const full_len = self.path.len + self.name.len;
+        std.debug.assert( full_len <= buf.len);
+        std.mem.copyForwards(u8, buf, self.path);
+        std.mem.copyForwards(u8, buf[self.path.len ..], self.name);
+        buf[full_len] = 0;
+        return buf[0..full_len :0];
+    }
 };
 
 pub const JsonSourceType = enum {
@@ -19,16 +29,30 @@ pub const JsonSourceType = enum {
     http,
 };
 
+pub const JsonFileSrc = struct {
+    name: [:0]const u8,
+    path: [:0]const u8 = "assets/",
+    ext: [:0]const u8 = ".json",
+
+    pub fn getPath(self: *const JsonFileSrc, buf: [:0]u8) [:0]u8 {
+        const full_len = self.name.len + self.path.len + self.ext.len;
+        std.debug.assert( full_len <= buf.len);
+        std.mem.copyForwards(u8, buf, self.path);
+        std.mem.copyForwards(u8, buf[self.path.len..], self.name);
+        std.mem.copyForwards(u8, buf[self.path.len + self.name.len ..], self.ext);
+        buf[full_len] = 0;
+        return buf[0..full_len :0];
+    }
+};
+
 pub const JsonReader = struct {
     json_reader: pdapi.JSONReader,
     file: ?*pdapi.SDFile = null,
 
-    pub fn init(folder: [:0]const u8, name: [:0]const u8) !JsonReader {
-        var buf = [_:0]u8{0} ** 64;
-        std.mem.copyForwards(u8, &buf, folder);
-        std.mem.copyForwards(u8, buf[folder.len..], name);
-        std.mem.copyForwards(u8, buf[name.len + folder.len ..], ".json");
-        const file = playdate.file.open(&buf, pdapi.FILE_READ) orelse return error.FileOpen;
+    pub fn init(json_path: JsonFileSrc) !JsonReader {
+        var buf: [64:0]u8 = @splat(0);
+        const path = json_path.getPath(&buf);
+        const file = playdate.file.open(path.ptr, pdapi.FILE_READ) orelse return error.FileOpen;
         return .{
             .file = file,
             .json_reader = .{
@@ -46,6 +70,6 @@ pub const JsonReader = struct {
 
 pub const JsonSource = union(JsonSourceType) {
     string: [:0]const u8,
-    file: [:0]const u8,
+    file: JsonFileSrc,
     http: HttpEndPoint,
 };

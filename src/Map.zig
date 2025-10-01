@@ -22,7 +22,7 @@ const CardinalDirection = enum(u2) {
 pub const default: Map = .{
     .levels = &.{},
     .level_switches = &.{},
-    .colliders = undefined, // n | e | w | s
+    .borders = undefined, // n | e | w | s
     .starting_level = 0,
     .current_level = 0,
     .collision_pad = 4,
@@ -32,7 +32,7 @@ pub const default: Map = .{
 
 levels: []*Level,
 level_switches: []LevelSwitch,
-colliders: [4]*pdapi.LCDSprite,
+borders: [4]*pdapi.LCDSprite,
 starting_level: u8,
 current_level: u8,
 collision_pad: u8,
@@ -49,8 +49,8 @@ pub fn clear(self: *Map) void {
     }
     _ = playdate.system.realloc(self.levels.ptr, 0);
     _ = playdate.system.realloc(self.level_switches.ptr, 0);
-    for (self.colliders) |collider| {
-        playdate.sprite.freeSprite(collider);
+    for (self.borders) |border| {
+        playdate.sprite.freeSprite(border);
     }
     self.* = .default;
 }
@@ -70,8 +70,8 @@ pub fn buildLevelSwitches(self: *Map) void {
     playdate.sprite.moveTo(north, 0.0, -@as(f32, @floatFromInt(self.collision_pad)));
     playdate.sprite.moveTo(south, 0.0, @as(f32, 240.0) + @as(f32, @floatFromInt(self.collision_pad)));
 
-    self.colliders[@intFromEnum(CardinalDirection.north)] = north;
-    self.colliders[@intFromEnum(CardinalDirection.south)] = south;
+    self.borders[@intFromEnum(CardinalDirection.north)] = north;
+    self.borders[@intFromEnum(CardinalDirection.south)] = south;
 
     const east = playdate.sprite.newSprite() orelse unreachable;
     playdate.sprite.setImage(east, east_west_bitmap, .BitmapUnflipped);
@@ -84,11 +84,11 @@ pub fn buildLevelSwitches(self: *Map) void {
     playdate.sprite.moveTo(east, @as(f32, 400.0) + @as(f32, @floatFromInt(self.collision_pad)), 0.0);
     playdate.sprite.moveTo(west, -@as(f32, @floatFromInt(self.collision_pad)), 0.0);
 
-    self.colliders[@intFromEnum(CardinalDirection.east)] = east;
-    self.colliders[@intFromEnum(CardinalDirection.west)] = west;
+    self.borders[@intFromEnum(CardinalDirection.east)] = east;
+    self.borders[@intFromEnum(CardinalDirection.west)] = west;
 
-    for (&self.colliders) |collider| {
-        playdate.sprite.addSprite(collider);
+    for (&self.borders) |border| {
+        playdate.sprite.addSprite(border);
     }
 }
 
@@ -96,10 +96,10 @@ pub fn setLevelTags(self: *Map) void {
     if (self.current_level >= self.level_switches.len) return;
     const lswitch = self.level_switches[self.current_level];
 
-    const north = self.colliders[@intFromEnum(CardinalDirection.north)];
-    const south = self.colliders[@intFromEnum(CardinalDirection.south)];
-    const east = self.colliders[@intFromEnum(CardinalDirection.east)];
-    const west = self.colliders[@intFromEnum(CardinalDirection.west)];
+    const north = self.borders[@intFromEnum(CardinalDirection.north)];
+    const south = self.borders[@intFromEnum(CardinalDirection.south)];
+    const east = self.borders[@intFromEnum(CardinalDirection.east)];
+    const west = self.borders[@intFromEnum(CardinalDirection.west)];
     playdate.sprite.setTag(north, lswitch.north);
     playdate.sprite.setTag(south, lswitch.south);
     playdate.sprite.setTag(east, lswitch.east);
@@ -162,9 +162,7 @@ pub const MapParser = struct {
             if (debug) playdate.system.logToConsole("len of levels %d", map.levels.len);
         } else if (std.mem.eql(u8, "name", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONString)) {
             const name = std.mem.sliceTo(value.data.stringval, 0);
-            const level = Level.init(&map_parser.game_state.bitmap_lib);
-            var level_parser = Level.LevelParser{ .level = level };
-            level_parser.buildLevel(.{ .file = name });
+            const level = Level.init(name, &map_parser.game_state.bitmap_lib);
             map.levels[map_parser.added_levels] = level;
         } else if (cls != null and std.mem.eql(u8, "east", key_name) and value.type == @intFromEnum(pdapi.JSONValueType.JSONInteger)) {
             cls.?.east = @intCast(value.data.intval);
@@ -232,8 +230,8 @@ pub fn buildMap(game_state: *GlobalState) void {
             break :blk .init_map;
         },
         .file => |f| {
-            var map_reader = JsonReader.init("assets/", f) catch {
-                playdate.system.logToConsole("ERROR: failed to read '%s.json' from assets", f.ptr);
+            var map_reader = JsonReader.init(f) catch {
+                playdate.system.logToConsole("ERROR: failed to read '%s.json' from %s", f.name.ptr, f.path.ptr);
                 return;
             };
             defer map_reader.deinit();
@@ -252,7 +250,9 @@ pub fn buildMap(game_state: *GlobalState) void {
             playdate.network.http.setReadBufferSize(hconn, 1024 * 128);
             playdate.network.http.setUserdata(hconn, @ptrCast(game_state));
             playdate.network.http.setRequestCompleteCallback(hconn, HTTPRequestCompleteCallback);
-            const err = playdate.network.http.get(hconn, h.path, null, 0);
+            var buf: [64:0]u8 = @splat(0);
+            const path = h.getPath(&buf);
+            const err = playdate.network.http.get(hconn, path, null, 0);
             if (debug) playdate.system.logToConsole("http get(), err=%i", @intFromEnum(err));
             break :blk .http_wait_for_response;
         },

@@ -4,6 +4,8 @@ const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 pub const panic = panic_handler.panic;
 const playdate = @import("PDapi.zig");
 
+var sp: ?*pdapi.LCDSprite = null;
+
 pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSystemEvent, arg: u32) callconv(.C) c_int {
     _ = arg;
     switch (event) {
@@ -11,21 +13,20 @@ pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSyst
             panic_handler.init(playdate_ptr);
 
             playdate.set_api(playdate_ptr);
-            playdate.system = playdate_ptr.system;
+
             const global_state: *GlobalState =
                 @ptrCast(@alignCast(
                     playdate.system.realloc(null, @sizeOf(GlobalState)),
                 ));
-
+            playdate.system.logToConsole("%d", @as(u32,@sizeOf(GlobalState)));
             global_state.* = .{
                 .state = .init,
                 .bitmap_lib = .default,
-                .font = playdate.graphics.loadFont("/System/Fonts/Roobert-20-Medium.pft", null).?,
+                //.font = playdate.graphics.loadFont("/System/Fonts/Roobert-20-Medium.pft", null).?,
                 .hou_img = playdate.graphics.loadBitmap("assets/images/houdini_connect", null).?,
                 .map = .default,
                 .player = null,
             };
-            playdate.system.logToConsole("INIT DONE");
             playdate.system.setUpdateCallback(update_and_render, global_state);
         },
         else => {},
@@ -35,9 +36,10 @@ pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSyst
 
 fn HTTPAccessCallback(allowed: bool, userdata: ?*anyopaque) callconv(.C) void {
     var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
-    playdate.system.logToConsole("HTTPAccessCallback: %i", allowed);
+    if (debug) playdate.system.logToConsole("HTTPAccessCallback: %i", allowed);
     global_state.state = .init;
 }
+
 
 fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
@@ -45,7 +47,7 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     switch (global_state.state) {
         .play => {},
         .http_request_access => {
-            playdate.system.logToConsole("Requesting Access");
+            if (debug) playdate.system.logToConsole("Requesting Access");
             const status = playdate.network.http.requestAccess(
                 "localhost",
                 65433,
@@ -64,38 +66,54 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             return 0;
         },
         .build_library => {
+            if (debug) playdate.system.logToConsole("Building Library");
             if (!global_state.bitmap_lib.isEmpty()) global_state.bitmap_lib.clear();
             BitmapLib.buildLibrary(global_state);
             return 0;
         },
         .build_map => {
+            if (debug) playdate.system.logToConsole("Building Map");
             // Triggers a build of the map, can't interact with the map until the
             // .init_map phase incase there is a http get event
             Map.buildMap(global_state);
             return 0;
         },
         .init_map => {
-            defer global_state.state = .init;
+            if (debug) playdate.system.logToConsole("Init Map");
+            defer global_state.state = .build_levels;
             global_state.map.current_level = global_state.map.starting_level;
-            global_state.map.buildLevelSwitches();
-            global_state.map.setLevelTags();
+            return 0;
+        },
+        .build_levels => {
+            if (debug) playdate.system.logToConsole("Build Levels");
+            for (global_state.map.levels) |level| {
+                if (level.loaded) continue;
+                level.buildLevel(global_state);
+                return 0;
+            }
             if (debug) {
                 for (global_state.map.levels, 0..) |level, i| {
                     playdate.system.logToConsole("Level: %d has %d sprites", i, level.sprites.len);
                 }
             }
-            return 0;
+            global_state.map.buildLevelSwitches();
+            global_state.map.setLevelTags();
+            global_state.state = .init;
+            //var level_parser = Level.LevelParser{ .level = level };
+            //level_parser.buildLevel(.{ .file = .name });
+           return 0;  
         },
         .init => {
+            if (debug) playdate.system.logToConsole("Init");
             const bitmap_lib = &global_state.bitmap_lib;
             if (bitmap_lib.isEmpty()) {
-                playdate.system.logToConsole("Need to build bitmap lib");
+                if (debug) playdate.system.logToConsole("Need to build bitmap lib");
                 global_state.state = .build_library;
                 return 0;
             }
 
             if (global_state.map.isEmpty()) {
-                playdate.system.logToConsole("Need to build map");
+                if (debug) playdate.system.logToConsole("Need to build map");
                 global_state.state = .build_map;
                 return 0;
             }
