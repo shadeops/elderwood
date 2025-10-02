@@ -2,13 +2,13 @@ const enable_debug = false;
 const debug = if (builtin.mode == .Debug and enable_debug) true else false;
 
 const playdate = @import("PDapi.zig");
-pub var global_gamestate_ptr: ?*GlobalState = null;
 
 const Player = @This();
 
 sprite: *pdapi.LCDSprite,
 
-bitlib: *const BitmapLib,
+// this could be made const if we move updating the level_switch to GlobalState
+game_state: *GlobalState,
 id: i16,
 duration: i16,
 frame_offset: i16,
@@ -49,7 +49,7 @@ fn playerMovement(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
     player.frame_offset = @rem(player.frame_offset + 1, player.duration);
     playdate.sprite.setImage(
         sprite,
-        player.bitlib.bitmaps[@intCast(player.id + player.frame_offset)],
+        player.game_state.bitmap_lib.bitmaps[@intCast(player.id + player.frame_offset)],
         playdate.sprite.getImageFlip(sprite),
     );
     var goalx: f32 = undefined;
@@ -76,8 +76,10 @@ fn playerMovement(sprite: ?*pdapi.LCDSprite) callconv(.C) void {
 }
 
 fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(.C) pdapi.SpriteCollisionResponseType {
-    _ = sprite;
-    var game_state = global_gamestate_ptr orelse return .CollisionTypeFreeze;
+    const userdata = playdate.sprite.getUserdata(sprite) orelse return .CollisionTypeFreeze;
+    const player: *Player = @ptrCast(@alignCast(userdata));
+    const game_state = player.game_state;
+
     const tag = playdate.sprite.getTag(other);
     if (tag == 255) return .CollisionTypeFreeze;
 
@@ -110,16 +112,16 @@ fn playerCollider(sprite: ?*pdapi.LCDSprite, other: ?*pdapi.LCDSprite) callconv(
     return .CollisionTypeFreeze;
 }
 
-pub fn init(bitmap_lib: *const BitmapLib, id: i16, duration: i6) !*Player {
-    if (id < 0 or id >= bitmap_lib.bitmaps.len) {
-        playdate.system.logToConsole("ERROR: Invalid bitmap_id %d, len: %d", id, bitmap_lib.bitmaps.len);
+pub fn init(game_state: *GlobalState, id: i16, duration: i6) !*Player {
+    if (id < 0 or id >= game_state.bitmap_lib.bitmaps.len) {
+        playdate.system.logToConsole("ERROR: Invalid bitmap_id %d, len: %d", id, game_state.bitmap_lib.bitmaps.len);
         return error.InvalidPlayer;
     }
 
     const player: *Player = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(Player))));
     const sprite = playdate.sprite.newSprite() orelse unreachable;
 
-    const bitmap = bitmap_lib.bitmaps[@intCast(id)];
+    const bitmap = game_state.bitmap_lib.bitmaps[@intCast(id)];
     var img_width: c_int = 0;
     var img_height: c_int = 0;
     playdate.graphics.getBitmapData(bitmap, &img_width, &img_height, null, null, null);
@@ -143,7 +145,7 @@ pub fn init(bitmap_lib: *const BitmapLib, id: i16, duration: i6) !*Player {
         .duration = duration,
         .flip = false,
         .frame_offset = 0,
-        .bitlib = bitmap_lib,
+        .game_state = game_state,
     };
 
     playdate.sprite.setUserdata(sprite, @ptrCast(player));
@@ -162,6 +164,5 @@ const std = @import("std");
 const builtin = @import("builtin");
 const pdapi = @import("playdate_api_definitions.zig");
 
-const BitmapLib = @import("BitmapLib.zig");
 const base_types = @import("base_types.zig");
 const GlobalState = @import("GlobalState.zig");

@@ -12,12 +12,12 @@ pub const HttpEndPoint = struct {
     port: i32 = 65433,
     path: [:0]const u8 = "/",
     name: [:0]const u8,
-    
+
     pub fn getPath(self: *const HttpEndPoint, buf: [:0]u8) [:0]u8 {
         const full_len = self.path.len + self.name.len;
-        std.debug.assert( full_len <= buf.len);
+        std.debug.assert(full_len <= buf.len);
         std.mem.copyForwards(u8, buf, self.path);
-        std.mem.copyForwards(u8, buf[self.path.len ..], self.name);
+        std.mem.copyForwards(u8, buf[self.path.len..], self.name);
         buf[full_len] = 0;
         return buf[0..full_len :0];
     }
@@ -36,7 +36,7 @@ pub const JsonFileSrc = struct {
 
     pub fn getPath(self: *const JsonFileSrc, buf: [:0]u8) [:0]u8 {
         const full_len = self.name.len + self.path.len + self.ext.len;
-        std.debug.assert( full_len <= buf.len);
+        std.debug.assert(full_len <= buf.len);
         std.mem.copyForwards(u8, buf, self.path);
         std.mem.copyForwards(u8, buf[self.path.len..], self.name);
         std.mem.copyForwards(u8, buf[self.path.len + self.name.len ..], self.ext);

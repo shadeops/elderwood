@@ -24,24 +24,8 @@ pub fn init(map_name: []const u8, bitmap_lib: *const BitmapLib) *Level {
 }
 
 pub fn deinit(self: *Level) void {
-    playdate.sprite.removeSprites(self.sprites.ptr, self.sprites.len);
-    for (self.sprites) |sprite| {
-        const userdata_ptr = playdate.sprite.getUserdata(sprite);
-        if (userdata_ptr) |userdata| _ = playdate.system.realloc(userdata, 0);
-        playdate.sprite.freeSprite(sprite);
-    }
-    playdate.sprite.removeSprites(self.colliders.ptr, self.colliders.len);
-    for (self.colliders) |sprite| {
-        const bitmap = playdate.sprite.getImage(sprite);
-        playdate.graphics.freeBitmap(bitmap);
-        playdate.sprite.freeSprite(sprite);
-    }
-    _ = playdate.system.realloc(self.sprites.ptr, 0);
-    _ = playdate.system.realloc(self.colliders.ptr, 0);
-    self.sprites = &.{};
-    self.colliders = &.{};
+    self.reset();
     self.name = @splat(0);
-    self.loaded = false;
 }
 
 pub fn populate(self: *const Level) void {
@@ -51,6 +35,27 @@ pub fn populate(self: *const Level) void {
     for (self.colliders) |collider| {
         playdate.sprite.addSprite(collider);
     }
+}
+
+pub fn reset(self: *Level) void {
+    self.loaded = false;
+    self.clear();
+    //playdate.sprite.removeSprites(self.sprites.ptr, self.sprites.len);
+    for (self.sprites) |sprite| {
+        const userdata_ptr = playdate.sprite.getUserdata(sprite);
+        if (userdata_ptr) |userdata| _ = playdate.system.realloc(userdata, 0);
+        playdate.sprite.freeSprite(sprite);
+    }
+    //playdate.sprite.removeSprites(self.colliders.ptr, self.colliders.len);
+    for (self.colliders) |sprite| {
+        const bitmap = playdate.sprite.getImage(sprite);
+        playdate.graphics.freeBitmap(bitmap);
+        playdate.sprite.freeSprite(sprite);
+    }
+    _ = playdate.system.realloc(@ptrCast(@alignCast(self.sprites.ptr)), 0);
+    _ = playdate.system.realloc(@ptrCast(@alignCast(self.colliders.ptr)), 0);
+    self.sprites = &.{};
+    self.colliders = &.{};
 }
 
 pub fn clear(self: *const Level) void {
@@ -137,7 +142,6 @@ pub const LevelParser = struct {
         }
     }
 
-
     fn didDecodeTableValue(decoder: ?*pdapi.JSONDecoder, key: ?[*:0]const u8, value: pdapi.JSONValue) callconv(.C) void {
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
         const level = jstate.level;
@@ -203,7 +207,6 @@ pub const LevelParser = struct {
             }
         }
     }
-
 
     fn didDecodeArrayValue(decoder: ?*pdapi.JSONDecoder, pos: c_int, value: pdapi.JSONValue) callconv(.C) void {
         const jstate: *LevelParser = @ptrCast(@alignCast((decoder orelse return).userdata));
@@ -321,7 +324,7 @@ pub const LevelParser = struct {
         self.added_colliders += 1;
         self.level.colliders[self.added_colliders - 1] = sprite;
     }
-    
+
     fn initDecoder(self: *LevelParser) pdapi.JSONDecoder {
         return .{
             .decodeError = decodeError,
@@ -336,14 +339,12 @@ pub const LevelParser = struct {
             .path = null,
         };
     }
-
 };
-
 
 pub fn buildLevel(self: *Level, game_state: *GlobalState) void {
     // rethink this. We want to set this to be true so that the build levels state
     // doesn't try to reload this level
-    defer self.loaded = true; 
+    defer self.loaded = true;
     if (debug) playdate.system.logToConsole("Loading Level %s", &self.name);
     game_state.state = blk: switch (game_state.level_src) {
         .string => |s| {
@@ -357,7 +358,12 @@ pub fn buildLevel(self: *Level, game_state: *GlobalState) void {
             level_src.name = std.mem.sliceTo(&self.name, 0);
             var level_reader = JsonReader.init(level_src) catch {
                 playdate.system.logToConsole("wtf");
-                playdate.system.logToConsole("ERROR: failed to read '%s%s' from %s", level_src.name.ptr, level_src.ext.ptr, level_src.path.ptr,);
+                playdate.system.logToConsole(
+                    "ERROR: failed to read '%s%s' from %s",
+                    level_src.name.ptr,
+                    level_src.ext.ptr,
+                    level_src.path.ptr,
+                );
                 return;
             };
             defer level_reader.deinit();
@@ -372,13 +378,13 @@ pub fn buildLevel(self: *Level, game_state: *GlobalState) void {
                 return;
             };
             playdate.network.http.setReadBufferSize(hconn, 1024 * 128);
-    
+
             const level_parser: *LevelParser = @ptrCast(@alignCast(playdate.system.realloc(null, @sizeOf(LevelParser))));
-            level_parser.* = .{ 
+            level_parser.* = .{
                 .level = self,
                 .game_state = game_state,
             };
-            
+
             playdate.network.http.setUserdata(hconn, @ptrCast(level_parser));
             playdate.network.http.setRequestCompleteCallback(hconn, HTTPRequestCompleteCallback);
             var level_src = h;
@@ -409,7 +415,6 @@ fn HTTPRequestCompleteCallback(conn: ?*pdapi.HTTPConnection) callconv(.C) void {
     level_parser.game_state.state = .build_levels;
     if (debug) playdate.system.logToConsole("Parsed Level");
 }
-
 
 const std = @import("std");
 const builtin = @import("builtin");

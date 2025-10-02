@@ -18,7 +18,7 @@ pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSyst
                 @ptrCast(@alignCast(
                     playdate.system.realloc(null, @sizeOf(GlobalState)),
                 ));
-            playdate.system.logToConsole("%d", @as(u32,@sizeOf(GlobalState)));
+            playdate.system.logToConsole("%d", @as(u32, @sizeOf(GlobalState)));
             global_state.* = .{
                 .state = .init,
                 .bitmap_lib = .default,
@@ -28,10 +28,16 @@ pub export fn eventHandler(playdate_ptr: *pdapi.PlaydateAPI, event: pdapi.PDSyst
                 .player = null,
             };
             playdate.system.setUpdateCallback(update_and_render, global_state);
+            _ = playdate.system.addMenuItem("Reload Level", reloadLevel, global_state);
         },
         else => {},
     }
     return 0;
+}
+
+fn reloadLevel(userdata: ?*anyopaque) callconv(.C) void {
+    var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
+    global_state.state = .rebuild_current_level;
 }
 
 fn HTTPAccessCallback(allowed: bool, userdata: ?*anyopaque) callconv(.C) void {
@@ -39,7 +45,6 @@ fn HTTPAccessCallback(allowed: bool, userdata: ?*anyopaque) callconv(.C) void {
     if (debug) playdate.system.logToConsole("HTTPAccessCallback: %i", allowed);
     global_state.state = .init;
 }
-
 
 fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
     var global_state: *GlobalState = @ptrCast(@alignCast(userdata.?));
@@ -101,7 +106,18 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
             global_state.state = .init;
             //var level_parser = Level.LevelParser{ .level = level };
             //level_parser.buildLevel(.{ .file = .name });
-           return 0;  
+            return 0;
+        },
+        .rebuild_current_level => {
+            if (debug) playdate.system.logToConsole("Rebuild Current Level");
+            global_state.map.levels[global_state.map.current_level].reset();
+            global_state.map.levels[global_state.map.current_level].buildLevel(global_state);
+            return 0;
+        },
+        .init_player => {
+            global_state.player = Player.init(global_state, 0, 18) catch unreachable;
+            global_state.state = .init;
+            return 0;
         },
         .init => {
             if (debug) playdate.system.logToConsole("Init");
@@ -118,25 +134,24 @@ fn update_and_render(userdata: ?*anyopaque) callconv(.C) c_int {
                 return 0;
             }
 
-            const player = Player.init(bitmap_lib, 0, 18) catch unreachable;
-            playdate.sprite.addSprite(player.sprite);
-
-            playdate.sprite.moveTo(
-                player.sprite,
-                @floatFromInt(global_state.map.player_pos_x),
-                @floatFromInt(global_state.map.player_pos_y),
-            );
-            playdate.sprite.setZIndex(
-                player.sprite,
-                @intCast(global_state.map.player_pos_y),
-            );
+            if (global_state.player) |player| {
+                playdate.sprite.addSprite(player.sprite);
+                playdate.sprite.moveTo(
+                    player.sprite,
+                    @floatFromInt(global_state.map.player_pos_x),
+                    @floatFromInt(global_state.map.player_pos_y),
+                );
+                playdate.sprite.setZIndex(
+                    player.sprite,
+                    @intCast(global_state.map.player_pos_y),
+                );
+            } else {
+                global_state.state = .init_player;
+                return 0;
+            }
 
             global_state.map.levels[global_state.map.current_level].populate();
-
             global_state.state = .play;
-            global_state.player = player;
-
-            Player.global_gamestate_ptr = global_state;
             return 0;
         },
         .http_wait_for_response => {
