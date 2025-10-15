@@ -35,15 +35,15 @@ const playdate = @import("PDapi.zig");
 
 state: GameState,
 bitmap_lib: BitmapLib = .default,
-//bitmap_lib_src: JsonSource = .{ .file = .{ .name = "library"} },
-bitmap_lib_src: JsonSource = .{ .http = .{ .name = "bitmap_library" } },
+bitmap_lib_src: JsonSource = .{ .file = .{ .name = "library"} },
+//bitmap_lib_src: JsonSource = .{ .http = .{ .name = "bitmap_library" } },
 
 map: Map = .default,
-//map_src: JsonSource = .{ .file = .{ .name = "map" } },
-map_src: JsonSource = .{ .http = .{ .name = "map" } },
+map_src: JsonSource = .{ .file = .{ .name = "map" } },
+//map_src: JsonSource = .{ .http = .{ .name = "map" } },
 
-//level_src: JsonSource = .{ .file = .{ .name = "", .path = "/assets/levels/", .ext = ".json"} },
-level_src: JsonSource = .{ .http = .{ .name = "" } },
+level_src: JsonSource = .{ .file = .{ .name = "", .path = "/assets/levels/", .ext = ".json"} },
+//level_src: JsonSource = .{ .http = .{ .name = "" } },
 
 player: ?*const Player,
 
